@@ -173,13 +173,13 @@ pub struct Word {
 }
 
 impl Word {
-    pub fn new(word: String) -> Word {
-        let re = regex::Regex::new(&format!("\\b{}\\b", word)).unwrap();
-        Self {
+    pub fn new(word: String) -> anyhow::Result<Word> {
+        let re = regex::Regex::new(&format!("\\b{}\\b", word))?;
+        Ok(Self {
             len: word.len(),
             raw: word,
             re,
-        }
+        })
     }
 
     pub fn find(&self, line: &str) -> Option<usize> {
