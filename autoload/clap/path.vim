@@ -12,10 +12,6 @@ function! s:is_dir(pattern) abort
   return a:pattern[-1:] ==# '/'
 endfunction
 
-function! clap#path#sepatper() abort
-  return s:PATH_SEPERATOR
-endfunction
-
 " Returns true if `path` ends with PATH_SEPERATOR
 function! clap#path#ends_with_seperator(path) abort
   return a:path[-1:] ==# s:PATH_SEPERATOR
