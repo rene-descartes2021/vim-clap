@@ -84,7 +84,7 @@ else
       " All the values of context will be treated as PyString in PyO3.
       let context = {
             \ 'winwidth': winwidth(g:clap.display.winid),
-            \ 'enable_icon': s:enable_icon() == v:true ? 'True' : 'False',
+            \ 'enable_icon': g:clap.provider.icon_enabled() ? 'True' : 'False',
             \ 'match_type': s:match_type(),
             \ 'bonus_type': clap#filter#get_bonus_type(),
             \ }

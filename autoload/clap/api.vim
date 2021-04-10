@@ -564,7 +564,7 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.support_icon() abort
-    return has_key(self._(), 'support_icon', v:false)
+    return get(self._(), 'support_icon', v:false)
   endfunction
 
   " Returns true if the provider supports icon and g:clap_enable_icon is on.

@@ -33,6 +33,7 @@ function! clap#client#notify_on_init(method, ...) abort
   let s:session_id += 1
   let params = {
         \   'cwd': clap#rooter#working_dir(),
+        \   'icon_enabled': g:clap.provide.icon_enabled(),
         \   'provider_id': g:clap.provider.id,
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \   'display_winwidth': winwidth(g:clap.display.winid),
@@ -62,6 +63,7 @@ function! clap#client#call_on_move(method, callback, ...) abort
     return
   endif
   let params = {'curline': curline}
+  " Backward compatiable
   if g:clap.provider.id ==# 'grep'
     let params['enable_icon'] = g:clap_provider_grep_enable_icon ? v:true : v:false
   endif
