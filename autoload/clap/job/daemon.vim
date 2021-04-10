@@ -15,7 +15,7 @@ if has('nvim')
     while !empty(a:lines)
       let line = remove(a:lines, 0)
 
-      if line ==# ''
+      if empty(line)
         continue
       elseif s:content_length == 0
         if line =~# '^Content-length:'

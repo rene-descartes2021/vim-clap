@@ -61,29 +61,15 @@ function! s:set_prompt() abort
   endif
 endfunction
 
-if has('win32')
-  function! s:is_root_directory(dir) abort
-    return a:dir =~? '^\([a-z]:\|\(\\\\\|\/\/\)[^\\\/]\+\(\\\|\/\/\)[^\\\/]\+\)\(\\\|\/\)\+$'
-  endfunction
-else
-  function! s:is_root_directory(dir) abort
-    return a:dir ==# s:PATH_SEPERATOR
-  endfunction
-endif
-
 function! s:goto_parent() abort
   " The root directory
-  if s:is_root_directory(s:current_dir)
+  if clap#path#is_root_dir(s:current_dir)
     return
   endif
 
-  if s:current_dir[-1:] ==# s:PATH_SEPERATOR
-    let parent_dir = fnamemodify(s:current_dir, ':h:h')
-  else
-    let parent_dir = fnamemodify(s:current_dir, ':h')
-  endif
+  let parent_dir = clap#path#parent(s:current_dir)
 
-  if s:is_root_directory(parent_dir)
+  if clap#path#is_root_dir(parent_dir)
     let s:current_dir = parent_dir
   else
     let s:current_dir = parent_dir.s:PATH_SEPERATOR
@@ -171,7 +157,7 @@ function! s:get_entry_by_line(line) abort
     let curline = curline[4:]
   endif
   let curline = substitute(curline, '\V' . s:CREATE_FILE, '', '')
-  return s:smart_concatenate(s:current_dir, curline)
+  return clap#path#push(s:current_dir, curline)
 endfunction
 
 function! s:get_current_entry() abort
@@ -180,11 +166,9 @@ endfunction
 
 function! s:try_go_to_dir_is_ok() abort
   let input = g:clap.input.get()
-  if input[-1:] ==# s:PATH_SEPERATOR
-    if isdirectory(expand(input))
-      call s:reset_to(expand(input))
-      return v:true
-    endif
+  if clap#path#ends_with_seperator(input) && isdirectory(expand(input))
+    call s:reset_to(expand(input))
+    return v:true
   endif
   return v:false
 endfunction
@@ -233,7 +217,7 @@ function! s:cr_action() abort
 
   if curline =~# s:DIRECTORY_IS_EMPTY
     let input = g:clap.input.get()
-    call clap#handler#sink_with({-> execute('edit '.s:smart_concatenate(s:current_dir, input))})
+    call clap#handler#sink_with({-> execute('edit '.clap#path#push(s:current_dir, input))})
     return
   endif
 
@@ -270,14 +254,6 @@ function! s:cr_action() abort
   call clap#sign#ensure_exists()
 
   return ''
-endfunction
-
-function! s:smart_concatenate(cur_dir, curline) abort
-  if a:cur_dir[-1:] ==# s:PATH_SEPERATOR
-    return a:cur_dir.a:curline
-  else
-    return a:cur_dir.s:PATH_SEPERATOR.a:curline
-  endif
 endfunction
 
 function! s:filer_sink(selected) abort
@@ -359,25 +335,12 @@ function! s:filer.on_move_async() abort
 endfunction
 
 function! s:filer_on_no_matches(input) abort
-  execute 'edit' s:smart_concatenate(s:current_dir, a:input)
+  execute 'edit' clap#path#push(s:current_dir, a:input)
 endfunction
-
-if has('win32')
-  function! s:normalize_path_sep(path) abort
-    return substitute(a:path, '[/\\]',s:PATH_SEPERATOR, 'g')
-  endfunction
-else
-  function! s:normalize_path_sep(path) abort
-    return a:path
-  endfunction
-endif
 
 function! s:set_initial_current_dir() abort
   if empty(g:clap.provider.args)
-    let s:current_dir = getcwd()
-    if s:current_dir[-1:] !=# s:PATH_SEPERATOR
-      let s:current_dir = s:current_dir.s:PATH_SEPERATOR
-    endif
+    let s:current_dir = clap#path#try_append_seperator(getcwd())
     return
   endif
 
@@ -389,19 +352,12 @@ function! s:set_initial_current_dir() abort
   elseif isdirectory(expand(maybe_dir))
     let target_dir = maybe_dir
   else
-    let s:current_dir = getcwd()
-    if s:current_dir[-1:] !=# s:PATH_SEPERATOR
-      let s:current_dir = s:current_dir.s:PATH_SEPERATOR
-    endif
+    let s:current_dir = clap#path#try_append_seperator(getcwd())
     return
   endif
 
-  let target_dir = s:normalize_path_sep(expand(target_dir))
-  if target_dir[-1:] ==# s:PATH_SEPERATOR
-    let s:current_dir = target_dir
-  else
-    let s:current_dir = target_dir.s:PATH_SEPERATOR
-  endif
+  let target_dir = clap#path#normalize_seperator(expand(target_dir))
+  let s:current_dir = clap#path#try_append_seperator(target_dir)
 endfunction
 
 function! s:start_rpc_service() abort

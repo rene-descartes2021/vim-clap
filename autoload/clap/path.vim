@@ -6,9 +6,65 @@ set cpoptions&vim
 
 let s:project_root_markers = get(g:, 'clap_project_root_markers', ['.root', '.git', '.git/'])
 
+let s:PATH_SEPERATOR = has('win32') && !(exists('+shellslash') && &shellslash) ? '\' : '/'
+
 function! s:is_dir(pattern) abort
   return a:pattern[-1:] ==# '/'
 endfunction
+
+function! clap#path#sepatper() abort
+  return s:PATH_SEPERATOR
+endfunction
+
+" Returns true if `path` ends with PATH_SEPERATOR
+function! clap#path#ends_with_seperator(path) abort
+  return a:path[-1:] ==# s:PATH_SEPERATOR
+endfunction
+
+" Appends the path seperator to `path` if it does not end with it.
+function! clap#path#try_append_seperator(path) abort
+  if clap#path#ends_with_seperator(a:path)
+    return a:path
+  else
+    return a:path.s:PATH_SEPERATOR
+  endif
+endfunction
+
+" Extends `dir` with `path`.
+function! clap#path#push(dir, path) abort
+  if clap#path#ends_with_seperator(a:dir)
+    return a:dir.a:path
+  else
+    return a:dir.s:PATH_SEPERATOR.a:path
+  endif
+endfunction
+
+" Returns `dir` without the final component.
+function! clap#path#parent(dir) abort
+  if clap#path#ends_with_seperator(a:dir)
+    return fnamemodify(a:dir, ':h:h')
+  else
+    return fnamemodify(a:dir, ':h')
+  endif
+endfunction
+
+if has('win32')
+  function! clap#path#normalize_seperator(path) abort
+    return substitute(a:path, '[/\\]',s:PATH_SEPERATOR, 'g')
+  endfunction
+
+  function! clap#path#is_root_dir(dir) abort
+    return a:dir =~? '^\([a-z]:\|\(\\\\\|\/\/\)[^\\\/]\+\(\\\|\/\/\)[^\\\/]\+\)\(\\\|\/\)\+$'
+  endfunction
+else
+  function! clap#path#normalize_seperator(path) abort
+    return a:path
+  endfunction
+
+  function! clap#path#is_root_dir(dir) abort
+    return a:dir ==# s:PATH_SEPERATOR
+  endfunction
+endif
 
 " Credit: vim-rooter
 function! s:find_upwards(start_dir, pattern) abort

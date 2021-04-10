@@ -26,22 +26,6 @@ function! s:blink.clear() dict abort
   endif
 endfunction
 
-" Try to load the file into a buffer given the file path.
-" This could be used for the preview purpose.
-function! clap#util#try_load_file(file) abort
-  if filereadable(expand(a:file))
-    let bufnr = bufadd(a:file)
-    if !bufloaded(bufnr)
-      " Use noautocmd here as we actually only want to get the buffer text,
-      " otherwise some services may be started unexpected, e.g., LSP service.
-      noautocmd silent call bufload(bufnr)
-    endif
-    return bufnr
-  else
-    return v:null
-  endif
-endfunction
-
 " Blink current line under cursor, originally from junegunn/vim-slash.
 function! clap#util#blink(times, delay, ...) abort
   let s:blink.ticks = 2 * a:times
@@ -59,6 +43,26 @@ function! clap#util#blink(times, delay, ...) abort
   call s:blink.clear()
   call s:blink.tick(0)
   return ''
+endfunction
+
+" Try to load the file into a buffer given the file path.
+" This could be used for the preview purpose.
+function! clap#util#try_load_file(file) abort
+  if filereadable(expand(a:file))
+    let bufnr = bufadd(a:file)
+    if !bufloaded(bufnr)
+      " Use noautocmd here as we actually only want to get the buffer text,
+      " otherwise some services may be started unexpected, e.g., LSP service.
+      noautocmd silent call bufload(bufnr)
+    endif
+    return bufnr
+  else
+    return v:null
+  endif
+endfunction
+
+function! clap#util#get_extension_by_bufnr(bufnr) abort
+  return fnamemodify(expand(bufname(a:bufnr)), ':e')
 endfunction
 
 function! clap#util#nvim_buf_get_first_line(bufnr) abort

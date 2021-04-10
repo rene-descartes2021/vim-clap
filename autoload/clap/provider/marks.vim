@@ -59,7 +59,7 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
     if exists('l:origin_bufnr')
       let ft = getbufvar(l:origin_bufnr, '&filetype')
       if empty(ft)
-        let ft = fnamemodify(expand(bufname(origin_bufnr)), ':e')
+        let ft = clap#util#get_extension_by_bufnr(origin_bufnr)
       endif
     else
       let ft = clap#ext#into_filetype(file_text)
