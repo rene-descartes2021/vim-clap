@@ -16,12 +16,12 @@ endfunction
 if has('nvim')
   function! s:set_indicator(indicator) abort
     if bufexists(g:__clap_indicator_bufnr)
-      call setbufline(g:__clap_indicator_bufnr, 1, s:padding(a:indicator))
+      noautocmd call setbufline(g:__clap_indicator_bufnr, 1, s:padding(a:indicator))
     endif
   endfunction
 else
   function! s:set_indicator(indicator) abort
-    call popup_settext(g:clap_indicator_winid, s:padding(a:indicator))
+    noautocmd call popup_settext(g:clap_indicator_winid, s:padding(a:indicator))
   endfunction
 endif
 
@@ -74,7 +74,7 @@ function! clap#indicator#clear() abort
 endfunction
 
 function! clap#indicator#set_none() abort
-  " Don't repeat(' ') directly as we can see the trailing char of listchars.
+  " Don't repeat(' ') directly as we can still see the trailing char of listchars.
   call clap#indicator#set(repeat(' ', &columns).' for eliminating the trailing char')
 endfunction
 

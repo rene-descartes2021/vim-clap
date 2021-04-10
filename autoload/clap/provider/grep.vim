@@ -294,6 +294,7 @@ let s:grep = {}
 
 let s:grep.syntax = 'clap_grep'
 let s:grep.enable_rooter = v:true
+let s:grep.support_icon = v:true
 let s:grep.support_open_action = v:true
 
 let s:grep.sink = function('s:grep_sink')

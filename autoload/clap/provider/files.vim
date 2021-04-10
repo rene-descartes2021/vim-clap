@@ -77,6 +77,7 @@ let s:files.on_move = function('clap#provider#files#on_move_impl')
 let s:files.on_move_async = function('clap#impl#on_move#async')
 let s:files.enable_rooter = v:true
 let s:files.support_open_action = v:true
+let s:files.support_icon = v:true
 let s:files.syntax = 'clap_files'
 
 let g:clap#provider#files# = s:files

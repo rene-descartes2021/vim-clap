@@ -563,6 +563,15 @@ function! s:init_provider() abort
     endif
   endfunction
 
+  function! provider.support_icon() abort
+    return has_key(self._(), 'support_icon', v:false)
+  endfunction
+
+  " Returns true if the provider supports icon and g:clap_enable_icon is on.
+  function! provider.icon_enabled() abort
+    return g:clap_enable_icon && self.support_icon()
+  endfunction
+
   function! provider.init_default_impl() abort
     if self.is_pure_async()
       return

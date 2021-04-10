@@ -18,6 +18,7 @@ let s:git_files.on_move = function('clap#provider#files#on_move_impl')
 let s:git_files.on_move_async = function('clap#impl#on_move#async')
 let s:git_files.syntax = 'clap_files'
 let s:git_files.enable_rooter = v:true
+let s:git_files.support_icon = v:true
 let s:git_files.support_open_action = v:true
 
 let g:clap#provider#git_files# = s:git_files

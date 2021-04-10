@@ -381,6 +381,7 @@ let s:filer.tab_action = function('s:tab_action')
 let s:filer.cr_action = function('s:cr_action')
 let s:filer.source_type = g:__t_rpc
 let s:filer.on_no_matches = function('s:filer_on_no_matches')
+let s:filer.support_icon = v:true
 let g:clap#provider#filer# = s:filer
 
 let &cpoptions = s:save_cpo

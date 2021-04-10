@@ -95,6 +95,8 @@ function! s:marks.on_move() abort
   call clap#provider#marks#preview_impl(line, col, file_text)
 endfunction
 
+" TODO: impl on_move_async in Rust
+
 let s:marks.syntax = 'clap_marks'
 let s:marks.source_type = g:__t_func_list
 

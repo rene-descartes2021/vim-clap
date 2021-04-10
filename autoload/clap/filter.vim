@@ -16,17 +16,6 @@ else
   let s:builtin_filter_capacity = 10000
 endif
 
-let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer', 'grep', 'grep2']
-
-function! s:enable_icon() abort
-  if g:clap_enable_icon
-        \ && index(s:related_builtin_providers, g:clap.provider.id) > -1
-    return v:true
-  else
-    return v:false
-  endif
-endfunction
-
 function! clap#filter#get_bonus_type() abort
   if index(['files', 'git_files', 'filer'], g:clap.provider.id) > -1
     return 'FileName'
@@ -41,7 +30,7 @@ function! clap#filter#matchfuzzy(query, candidates) abort
   let result = matchfuzzypos(a:candidates, a:query)
   let filtered = result[0]
   let matched_indices = result[1]
-  if s:enable_icon()
+  if g:clap.provider.icon_enabled()
     let g:__clap_fuzzy_matched_indices = []
     for indices in matched_indices
       call add(g:__clap_fuzzy_matched_indices, map(indices, 'v:val + 2'))
@@ -69,7 +58,7 @@ if get(g:, 'clap_force_matchfuzzy', v:false)
 elseif s:can_use_lua && !get(g:, 'clap_force_python', v:false)
   let s:current_filter_impl = 'Lua'
   function! clap#filter#sync(query, candidates) abort
-    return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), s:match_type())
+    return clap#filter#sync#lua#(a:query, a:candidates, -1, g:clap.provider.icon_enabled(), s:match_type())
   endfunction
 else
   let s:can_use_python = v:false

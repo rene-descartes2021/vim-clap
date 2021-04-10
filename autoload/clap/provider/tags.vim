@@ -68,6 +68,7 @@ function! s:tags.sink(selected) abort
 endfunction
 
 let s:tags.on_move_async = function('clap#impl#on_move#async')
+let s:tags.support_icon = v:true
 
 let g:clap#provider#tags# = s:tags
 
