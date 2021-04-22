@@ -29,6 +29,7 @@ structopt = "0.3"
 
 filter = { path = "../filter" }
 icon = { path = "../icon" }
+nerdtree = { path = "../nerdtree" }
 pattern = { path = "../pattern" }
 printer = { path = "../printer" }
 source_item = { path = "../source_item" }

@@ -845,6 +845,7 @@ dependencies = [
  "itertools",
  "log",
  "log4rs",
+ "nerdtree",
  "once_cell",
  "pattern",
  "printer",
@@ -980,6 +981,10 @@ dependencies = [
  "security-framework-sys",
  "tempfile",
 ]
+
+[[package]]
+name = "nerdtree"
+version = "0.1.0"
 
 [[package]]
 name = "net2"

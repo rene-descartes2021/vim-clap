@@ -63,6 +63,10 @@ impl Message {
         self.get_string_unsafe("cwd")
     }
 
+    pub fn get_lnum(&self) -> usize {
+        self._get_u64("lnum").unwrap() as usize
+    }
+
     /// Get the current line of display window without the leading icon.
     pub fn get_curline(&self, provider_id: &ProviderId) -> anyhow::Result<String> {
         let display_curline = self._get_string("curline")?;
@@ -98,6 +102,13 @@ impl Message {
         self.params
             .get(key)
             .and_then(|x| x.as_bool())
+            .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
+    }
+
+    fn _get_u64(&self, key: &str) -> anyhow::Result<u64> {
+        self.params
+            .get(key)
+            .and_then(|x| x.as_u64())
             .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
     }
 

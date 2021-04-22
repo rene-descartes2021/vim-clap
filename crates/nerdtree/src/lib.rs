@@ -74,6 +74,13 @@ impl PathNode {
         path_node.children = Vec::new();
     }
 
+    pub fn expand_at(&mut self, lnum: usize) -> Vec<String> {
+        let tree_index = self.flat_index_to_tree_index(lnum);
+        self.expand(&tree_index, &PathNodeOrdering::Top);
+        let renderer = crate::renderer::Renderer::new(true);
+        renderer.render(&self)
+    }
+
     /// Returns all the child path nodes.
     fn list_children(&mut self, node_ordering: &PathNodeOrdering) -> Vec<PathNode> {
         match self.path.read_dir() {
