@@ -34,3 +34,21 @@ pub fn handle_nerdtree_message(msg: Message) {
 
     write_response(result);
 }
+
+pub fn toggle(msg: Message) {
+    let cwd = msg.get_cwd();
+    let lnum = msg.get_lnum();
+    debug!("Recv nerdtree params: cwd:{}", cwd,);
+
+    let mut root = PathNode::new_expanded(&cwd);
+
+    let lines = root.toggle_at(lnum);
+
+    let result = json!({
+    "lines": lines,
+    });
+
+    let result = json!({ "id": msg.id, "provider_id": "nerdtree", "result": result });
+
+    write_response(result);
+}

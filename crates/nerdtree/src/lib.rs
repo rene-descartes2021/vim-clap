@@ -74,6 +74,16 @@ impl PathNode {
         path_node.children = Vec::new();
     }
 
+    pub fn toggle_at(&mut self, lnum: usize) -> Vec<String> {
+        let tree_index = self.flat_index_to_tree_index(lnum);
+        if self.is_expanded {
+            self.collapse(&tree_index);
+        } else {
+            self.expand(&tree_index, &PathNodeOrdering::Top);
+        }
+        self.expand_at(lnum)
+    }
+
     pub fn expand_at(&mut self, lnum: usize) -> Vec<String> {
         let tree_index = self.flat_index_to_tree_index(lnum);
         self.expand(&tree_index, &PathNodeOrdering::Top);

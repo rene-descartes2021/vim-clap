@@ -6,12 +6,39 @@ function! s:new_window() abort
   endif
 
   if get(g:, 'vista_sidebar_keepalt', 0)
-    silent execute 'keepalt '.open '__vista__'
+    silent execute 'keepalt '.open '__nerdtree__'
   else
-    silent execute open '__vista__'
+    silent execute open '__nerdtree__'
   endif
 
+  " Options for a non-file/control buffer.
+  setlocal bufhidden=hide
+  setlocal buftype=nofile
+  setlocal noswapfile
+
+  " Options for controlling buffer/window appearance.
+  setlocal foldcolumn=0
+  setlocal foldmethod=manual
+  setlocal nobuflisted
+  setlocal nofoldenable
+  setlocal nolist
+  setlocal nospell
+  setlocal nowrap
+
+  setlocal nonumber
+  if v:version >= 703
+      setlocal norelativenumber
+  endif
+
+  setlocal cursorline
+
   setlocal filetype=nerdtree
+
+  nnoremap <silent> <buffer> <CR>      :<c-u>call <SID>toggle_action()<CR>
+endfunction
+
+function! s:toggle_action() abort
+  call clap#client#call('nerdtree/toggle', function('s:nerdtree_callback'), {'lnum': line('.')})
 endfunction
 
 function! s:handle_error(error) abort
