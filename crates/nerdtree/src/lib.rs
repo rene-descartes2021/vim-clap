@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+mod action;
 mod compare_fns;
 mod renderer;
 mod tree_index;
@@ -77,7 +78,7 @@ impl PathNode {
     pub fn toggle_at(&mut self, lnum: usize) -> Vec<String> {
         let tree_index = self.flat_index_to_tree_index(lnum);
         if self.is_expanded {
-            self.collapse(&tree_index);
+            return self.do_collapse_action(lnum);
         } else {
             self.expand(&tree_index, &PathNodeOrdering::Top);
         }

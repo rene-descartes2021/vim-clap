@@ -38,7 +38,7 @@ function! s:new_window() abort
 endfunction
 
 function! s:toggle_action() abort
-  call clap#client#call('nerdtree/toggle', function('s:nerdtree_callback'), {'lnum': line('.')})
+  call clap#client#call('nerdtree/toggle', function('s:nerdtree_callback'), {'lnum': line('.'), 'cwd': clap#rooter#working_dir()})
 endfunction
 
 function! s:handle_error(error) abort
