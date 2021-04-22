@@ -41,41 +41,7 @@ impl PathNodeOrdering {
     }
 }
 
-pub type PathNodeCompare = fn(&PathNode, &PathNode) -> Ordering;
-
-impl PathNode {
-    pub fn compare_dirs_bot_simple(a: &PathNode, b: &PathNode) -> Ordering {
-        if a.is_dir && !b.is_dir {
-            return std::cmp::Ordering::Greater;
-        } else if !a.is_dir && b.is_dir {
-            return std::cmp::Ordering::Less;
-        }
-
-        a.display_text.cmp(&b.display_text)
-    }
-
-    pub fn compare_dirs_top_simple(a: &PathNode, b: &PathNode) -> Ordering {
-        if a.is_dir && !b.is_dir {
-            return std::cmp::Ordering::Less;
-        } else if !a.is_dir && b.is_dir {
-            return std::cmp::Ordering::Greater;
-        }
-
-        a.display_text.cmp(&b.display_text)
-    }
-
-    pub fn get_path_node_compare(path_node_sort: &str) -> PathNodeCompare {
-        let path_node_compare: fn(&PathNode, &PathNode) -> Ordering = match path_node_sort {
-            "dirs_bot_simple" => PathNode::compare_dirs_bot_simple,
-            "dirs_top_simple" => PathNode::compare_dirs_top_simple,
-            "none" => |_, _| Ordering::Equal,
-            _ => |_, _| Ordering::Equal,
-        };
-
-        path_node_compare
-    }
-}
-
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -164,3 +130,4 @@ mod tests {
         path_node
     }
 }
+*/
