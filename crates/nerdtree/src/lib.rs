@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 mod compare_fns;
-mod composer;
+mod renderer;
 mod tree_index;
 
 use compare_fns::PathNodeOrdering;
@@ -44,7 +44,37 @@ impl PathNode {
         path_node
     }
 
-    /// Returns all the child nodes.
+    /// Expands the directory.
+    pub fn expand_dir(&mut self, tree_index: &TreeIndex, node_ordering: &PathNodeOrdering) {
+        let mut path_node = self;
+
+        for i in tree_index.iter() {
+            if path_node.children.len() > *i {
+                path_node = &mut path_node.children[*i];
+            }
+        }
+
+        if !path_node.path.is_dir() {
+            return;
+        }
+
+        path_node.is_expanded = true;
+        path_node.children = path_node.list_children(node_ordering);
+    }
+
+    /// Collapses the directory
+    pub fn collapse_dir(&mut self, tree_index: &TreeIndex) {
+        let mut path_node = self;
+
+        for i in tree_index.iter() {
+            path_node = &mut path_node.children[*i];
+        }
+
+        path_node.is_expanded = false;
+        path_node.children = Vec::new();
+    }
+
+    /// Returns all the child path nodes.
     fn list_children(&mut self, node_ordering: &PathNodeOrdering) -> Vec<PathNode> {
         match self.path.read_dir() {
             Ok(dirs) => {
@@ -69,34 +99,6 @@ impl PathNode {
                 Vec::new()
             }
         }
-    }
-
-    pub fn expand_dir(&mut self, tree_index: &TreeIndex, node_ordering: &PathNodeOrdering) {
-        let mut path_node = self;
-
-        for i in tree_index.iter() {
-            if path_node.children.len() > *i {
-                path_node = &mut path_node.children[*i];
-            }
-        }
-
-        if !path_node.path.is_dir() {
-            return;
-        }
-
-        path_node.is_expanded = true;
-        path_node.children = path_node.list_children(node_ordering);
-    }
-
-    pub fn collapse_dir(&mut self, tree_index: &TreeIndex) {
-        let mut path_node = self;
-
-        for i in tree_index.iter() {
-            path_node = &mut path_node.children[*i];
-        }
-
-        path_node.is_expanded = false;
-        path_node.children = Vec::new();
     }
 
     fn flat_index_to_tree_index_recursive(
@@ -177,15 +179,15 @@ fn test_expand() {
     let mut root = PathNode::new_expanded("/home/xlc/.vim/plugged/vim-clap");
     let tree_index = root.flat_index_to_tree_index(0);
     root.expand_dir(&tree_index, &PathNodeOrdering::Top);
-    let composer = crate::composer::Composer::default();
-    let lines = composer.compose_path_node(&root);
+    let renderer = crate::renderer::Renderer::new(true);
+    let lines = renderer.render(&root);
     for line in lines {
         println!("{}", line);
     }
-    let tree_index = root.flat_index_to_tree_index(27);
+    let tree_index = root.flat_index_to_tree_index(7);
     root.expand_dir(&tree_index, &PathNodeOrdering::Top);
-    let composer = crate::composer::Composer::default();
-    let lines = composer.compose_path_node(&root);
+    let renderer = crate::renderer::Renderer::new(true);
+    let lines = renderer.render(&root);
     for line in lines {
         println!("{}", line);
     }
