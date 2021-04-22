@@ -40,12 +40,12 @@ impl PathNode {
     pub fn new_expanded(working_dir: &str) -> Self {
         let mut path_node = Self::from(working_dir);
         path_node.is_dir = true;
-        path_node.expand_dir(&TreeIndex::new(), &PathNodeOrdering::Top);
+        path_node.expand(&TreeIndex::new(), &PathNodeOrdering::Top);
         path_node
     }
 
     /// Expands the directory.
-    pub fn expand_dir(&mut self, tree_index: &TreeIndex, node_ordering: &PathNodeOrdering) {
+    pub fn expand(&mut self, tree_index: &TreeIndex, node_ordering: &PathNodeOrdering) {
         let mut path_node = self;
 
         for i in tree_index.iter() {
@@ -63,7 +63,7 @@ impl PathNode {
     }
 
     /// Collapses the directory
-    pub fn collapse_dir(&mut self, tree_index: &TreeIndex) {
+    pub fn collapse(&mut self, tree_index: &TreeIndex) {
         let mut path_node = self;
 
         for i in tree_index.iter() {
@@ -178,14 +178,14 @@ impl PathNode {
 fn test_expand() {
     let mut root = PathNode::new_expanded("/home/xlc/.vim/plugged/vim-clap");
     let tree_index = root.flat_index_to_tree_index(0);
-    root.expand_dir(&tree_index, &PathNodeOrdering::Top);
+    root.expand(&tree_index, &PathNodeOrdering::Top);
     let renderer = crate::renderer::Renderer::new(true);
     let lines = renderer.render(&root);
     for line in lines {
         println!("{}", line);
     }
     let tree_index = root.flat_index_to_tree_index(7);
-    root.expand_dir(&tree_index, &PathNodeOrdering::Top);
+    root.expand(&tree_index, &PathNodeOrdering::Top);
     let renderer = crate::renderer::Renderer::new(true);
     let lines = renderer.render(&root);
     for line in lines {
