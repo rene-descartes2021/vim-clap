@@ -56,3 +56,40 @@ pub fn toggle(msg: Message) {
         write_response(result);
     });
 }
+
+/*
+pub struct TreeExplorerSession;
+
+impl NewSession for TreeExplorerSession {
+    fn new_session(&self, msg: Message, event_handler: T) -> Result<Sender<SessionEvent>> {
+        let (session_sender, session_receiver) = crossbeam_channel::unbounded();
+
+        let session = Session {
+            session_id: msg.session_id,
+            context: msg.into(),
+            event_handler,
+            event_recv: session_receiver,
+        };
+
+        debug!("new tree explorer session context: {:?}", session.context);
+
+        session.start_event_loop()?;
+
+        Ok(session_sender)
+    }
+}
+
+#[derive(Clone)]
+pub struct TreeExplorerEventHandler;
+
+impl EventHandler for TreeExplorerEventHandler {
+    fn handle(&self, event: Event, context: &SessionContext) {
+        match event {
+            Event::OnMove(msg) => {
+                todo!("unimplemented for tree explorer")
+            }
+            Event::OnTyped(msg) => todo!("OnTyped unimplemented for tree explorer"),
+        }
+    }
+}
+*/
