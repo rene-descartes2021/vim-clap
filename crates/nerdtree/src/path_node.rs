@@ -113,8 +113,10 @@ impl PathNode {
     pub fn toggle_at(&mut self, lnum: usize) -> Vec<String> {
         let tree_index = self.flat_index_to_tree_index(lnum);
         if self.is_expanded {
-            todo!()
-        // return self.do_collapse_action(lnum);
+            let renderer = crate::renderer::Renderer::new(true);
+            let mut tree_explorer =
+                crate::TreeExplorer::new(self.clone(), renderer, PathNodeOrdering::Top);
+            return tree_explorer.do_collapse(lnum);
         } else {
             self.expand(&tree_index, &PathNodeOrdering::Top);
         }

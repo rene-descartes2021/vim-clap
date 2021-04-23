@@ -16,16 +16,56 @@ pub struct TreeExplorer {
 }
 
 impl TreeExplorer {
-    pub fn new() -> Self {
-        todo!()
+    pub fn new(
+        root_node: PathNode,
+        renderer: Renderer,
+        path_node_ordering: PathNodeOrdering,
+    ) -> Self {
+        Self {
+            root_node,
+            renderer,
+            path_node_ordering,
+        }
     }
 
-    pub fn do_collapse(&mut self) {}
-
-    pub fn do_expand(&mut self) {}
+    pub fn do_expand(&mut self, cursor_row: usize) -> Vec<String> {
+        let tree_index = self.root_node.flat_index_to_tree_index(cursor_row);
+        self.root_node.expand(&tree_index, &self.path_node_ordering);
+        self.renderer.render(&self.root_node)
+    }
 
     // Reload the opened directories.
     pub fn do_reload(&mut self) {}
+
+    pub fn do_collapse(&mut self, cursor_row: usize) -> Vec<String> {
+        let tree_index = self.root_node.flat_index_to_tree_index(cursor_row);
+
+        let cursor_delta = self.get_parent_dir_cursor_delta(&tree_index, cursor_row);
+
+        if cursor_delta == 0 {
+            self.root_node.collapse(&tree_index);
+        }
+
+        self.renderer.render(&self.root_node)
+    }
+
+    fn get_parent_dir_cursor_delta(&mut self, tree_index: &TreeIndex, cursor_row: usize) -> usize {
+        let child_path_node = self.root_node.get_child_path_node(tree_index);
+        if child_path_node.is_dir && child_path_node.is_expanded {
+            return 0;
+        }
+
+        let parent_path_node_tree_index = tree_index.get_parent();
+        if parent_path_node_tree_index == TreeIndex::new() {
+            return 0;
+        }
+
+        let parent_flat_index = self
+            .root_node
+            .tree_index_to_flat_index(&parent_path_node_tree_index);
+
+        parent_flat_index - cursor_row
+    }
 }
 
 /*
