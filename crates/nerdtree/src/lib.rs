@@ -1,212 +1,108 @@
-use std::path::PathBuf;
-
-mod action;
-mod compare_fns;
+// mod action;
+mod path_node;
 mod renderer;
 mod tree_index;
 
-use compare_fns::PathNodeOrdering;
-use tree_index::TreeIndex;
+use renderer::Renderer;
 
-#[derive(Debug, Clone)]
-pub struct PathNode {
-    pub path: PathBuf,
-    pub is_dir: bool,
-    pub is_err: bool,
-    pub is_expanded: bool,
-    pub children: Vec<PathNode>,
-    pub display_text: String,
+pub use self::path_node::{PathNode, PathNodeOrdering};
+pub use self::tree_index::TreeIndex;
+
+#[derive(Clone, Debug)]
+pub struct TreeExplorer {
+    pub root_node: PathNode,
+    pub renderer: Renderer,
+    pub path_node_ordering: PathNodeOrdering,
 }
 
-impl From<&str> for PathNode {
-    fn from(path: &str) -> Self {
-        Self {
-            children: Vec::new(),
-            display_text: String::from(path),
-            is_dir: false,
-            is_err: false,
-            is_expanded: false,
-            path: PathBuf::from(path),
-        }
+impl TreeExplorer {
+    pub fn new() -> Self {
+        todo!()
     }
+
+    pub fn do_collapse(&mut self) {}
+
+    pub fn do_expand(&mut self) {}
+
+    // Reload the opened directories.
+    pub fn do_reload(&mut self) {}
 }
 
-impl From<String> for PathNode {
-    fn from(path: String) -> Self {
-        Self::from(path.as_str())
-    }
-}
+/*
+    pub fn do_reload(&mut self) -> Option<()> {
+        self.reload_openend_dirs();
 
-impl PathNode {
-    pub fn new_expanded(working_dir: &str) -> Self {
-        let mut path_node = Self::from(working_dir);
-        path_node.is_dir = true;
-        path_node.expand(&TreeIndex::new(), &PathNodeOrdering::Top);
-        path_node
+        self.text_entries =
+            self.composer.compose_path_node(&self.path_node_root);
+
+        self.update_pager(0);
+
+        Some(())
     }
 
-    /// Expands the directory.
-    pub fn expand(&mut self, tree_index: &TreeIndex, node_ordering: &PathNodeOrdering) {
-        let mut path_node = self;
+    fn reload_openend_dirs(&mut self) {
+        // backup the old path node structure
+        let old_path_node_root = self.path_node_root.clone();
 
-        for i in tree_index.iter() {
-            if path_node.children.len() > *i {
-                path_node = &mut path_node.children[*i];
-            }
-        }
+        // reset the root path node
+        self.path_node_root =
+            PathNode::from(self.config.setup.working_dir.clone());
+        self.path_node_root
+            .expand_dir(&TreeIndex::from(Vec::new()), self.path_node_compare);
 
-        if !path_node.path.is_dir() {
-            return;
-        }
-
-        path_node.is_expanded = true;
-        path_node.children = path_node.list_children(node_ordering);
+        // restore the old path nodes structure for the root path node
+        self.restore_expansions(&old_path_node_root, &mut TreeIndex::new());
     }
 
-    /// Collapses the directory
-    pub fn collapse(&mut self, tree_index: &TreeIndex) {
-        let mut path_node = self;
-
-        for i in tree_index.iter() {
-            path_node = &mut path_node.children[*i];
-        }
-
-        path_node.is_expanded = false;
-        path_node.children = Vec::new();
-    }
-
-    pub fn toggle_at(&mut self, lnum: usize) -> Vec<String> {
-        let tree_index = self.flat_index_to_tree_index(lnum);
-        if self.is_expanded {
-            return self.do_collapse_action(lnum);
-        } else {
-            self.expand(&tree_index, &PathNodeOrdering::Top);
-        }
-        self.expand_at(lnum)
-    }
-
-    pub fn expand_at(&mut self, lnum: usize) -> Vec<String> {
-        let tree_index = self.flat_index_to_tree_index(lnum);
-        self.expand(&tree_index, &PathNodeOrdering::Top);
-        let renderer = crate::renderer::Renderer::new(true);
-        renderer.render(&self)
-    }
-
-    /// Returns all the child path nodes.
-    fn list_children(&mut self, node_ordering: &PathNodeOrdering) -> Vec<PathNode> {
-        match self.path.read_dir() {
-            Ok(dirs) => {
-                let mut path_nodes = dirs
-                    .filter_map(|dir_entry| dir_entry.ok())
-                    .map(|entry| PathNode {
-                        children: Vec::new(),
-                        display_text: entry.file_name().into_string().unwrap(),
-                        is_dir: entry.path().is_dir(),
-                        is_err: false,
-                        is_expanded: false,
-                        path: entry.path(),
-                    })
-                    .collect::<Vec<_>>();
-
-                path_nodes.sort_unstable_by(|a, b| node_ordering.compare(a, b));
-
-                path_nodes
-            }
-            Err(_) => {
-                self.is_err = true;
-                Vec::new()
-            }
-        }
-    }
-
-    fn flat_index_to_tree_index_recursive(
-        &self,
-        flat_index: &mut usize,
+    fn restore_expansions(
+        &mut self,
+        path_node: &PathNode,
         tree_index: &mut TreeIndex,
-    ) -> bool {
-        if *flat_index == 0 {
-            return true;
-        }
+    ) {
+        for (c, child) in path_node.children.iter().enumerate() {
+            if child.is_expanded {
+                tree_index.index.push(c);
 
-        for (c, child) in self.children.iter().enumerate() {
-            *flat_index -= 1;
+                self.path_node_root
+                    .expand_dir(tree_index, self.path_node_compare);
+                self.restore_expansions(child, tree_index);
 
-            tree_index.index.push(c);
-            if child.flat_index_to_tree_index_recursive(flat_index, tree_index) {
-                return true;
+                tree_index.index.pop();
             }
-            tree_index.index.pop();
         }
-
-        false
     }
 
-    pub fn flat_index_to_tree_index(&self, flat_index: usize) -> TreeIndex {
-        let mut tree_index = TreeIndex::new();
+pub fn do_collapse_dir(&mut self) -> Option<()> {
+    let tree_index = self
+        .path_node_root
+        .flat_index_to_tree_index(self.pager.cursor_row as usize);
 
-        self.flat_index_to_tree_index_recursive(&mut (flat_index + 1), &mut tree_index);
+    let cursor_delta = self.get_parent_dir_cursor_delta(&tree_index);
 
-        tree_index
+    if cursor_delta == 0 {
+        self.path_node_root.collapse_dir(&tree_index);
     }
 
-    pub fn tree_index_to_flat_index_recursive(
-        &self,
-        target_tree_index: &TreeIndex,
-        current_tree_index: &TreeIndex,
-    ) -> usize {
-        if current_tree_index >= target_tree_index {
-            return 0;
-        }
+    self.text_entries = self.composer.compose_path_node(&self.path_node_root);
 
-        if self.children.is_empty() {
-            return 1;
-        }
-
-        let mut sum = 1;
-
-        for (index, child) in self.children.iter().enumerate() {
-            let mut new_current_tree_index = current_tree_index.clone();
-            new_current_tree_index.index.push(index);
-
-            sum += child
-                .tree_index_to_flat_index_recursive(target_tree_index, &new_current_tree_index);
-        }
-
-        sum
-    }
-
-    pub fn tree_index_to_flat_index(&self, tree_index: &TreeIndex) -> usize {
-        // We count the root directory, hence we have to subtract 1 to get the
-        // proper index.
-        self.tree_index_to_flat_index_recursive(tree_index, &TreeIndex::new()) - 1
-    }
-
-    pub fn get_child_path_node(&self, tree_index: &TreeIndex) -> &Self {
-        let mut child_node = self;
-
-        for i in &tree_index.index {
-            child_node = &child_node.children[*i];
-        }
-
-        child_node
-    }
+    Some(())
 }
 
-#[test]
-fn test_expand() {
-    let mut root = PathNode::new_expanded("/home/xlc/.vim/plugged/vim-clap");
-    let tree_index = root.flat_index_to_tree_index(0);
-    root.expand(&tree_index, &PathNodeOrdering::Top);
-    let renderer = crate::renderer::Renderer::new(true);
-    let lines = renderer.render(&root);
-    for line in lines {
-        println!("{}", line);
+fn get_parent_dir_cursor_delta(&mut self, tree_index: &TreeIndex) -> i32 {
+    let child_path_node = self.path_node_root.get_child_path_node(tree_index);
+    if child_path_node.is_dir && child_path_node.is_expanded {
+        return 0;
     }
-    let tree_index = root.flat_index_to_tree_index(7);
-    root.expand(&tree_index, &PathNodeOrdering::Top);
-    let renderer = crate::renderer::Renderer::new(true);
-    let lines = renderer.render(&root);
-    for line in lines {
-        println!("{}", line);
+
+    let parent_path_node_tree_index = tree_index.get_parent();
+    if parent_path_node_tree_index == TreeIndex::new() {
+        return 0;
     }
+
+    let parent_flat_index = self
+        .path_node_root
+        .tree_index_to_flat_index(&parent_path_node_tree_index) as i32;
+
+    parent_flat_index - cursor_row
 }
+*/

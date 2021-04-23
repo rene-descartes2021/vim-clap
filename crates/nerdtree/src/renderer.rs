@@ -1,5 +1,6 @@
-use crate::PathNode;
+use crate::path_node::PathNode;
 
+#[derive(Clone, Debug)]
 pub struct Renderer {
     use_utf8: bool,
     show_indent: bool,
@@ -15,11 +16,7 @@ impl Default for Renderer {
             show_indent: true,
             indent: 4,
             indent_char: ' ',
-            icon_char: IconChar {
-                err: ' ',
-                expanded: ' ',
-                collapsed: ' ',
-            },
+            icon_char: Default::default(),
         }
     }
 }
@@ -29,6 +26,17 @@ pub struct IconChar {
     pub err: char,
     pub expanded: char,
     pub collapsed: char,
+}
+
+// Assume everyones uses utf-8
+impl Default for IconChar {
+    fn default() -> Self {
+        Self {
+            err: '⨯',
+            expanded: '▼',
+            collapsed: '▶',
+        }
+    }
 }
 
 impl IconChar {
