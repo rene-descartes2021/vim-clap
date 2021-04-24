@@ -45,7 +45,7 @@ pub fn toggle(msg: Message) {
 
         let mut root = PathNode::new_expanded(&cwd);
 
-        let lines = root.toggle_at(lnum - 1);
+        let lines = root.expand_at(lnum - 1);
 
         let result = json!({
         "lines": lines,

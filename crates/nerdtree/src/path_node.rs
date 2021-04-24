@@ -73,6 +73,12 @@ impl From<String> for PathNode {
 }
 
 impl PathNode {
+    pub fn new(working_dir: &str) -> Self {
+        let mut path_node = Self::from(working_dir);
+        path_node.is_dir = true;
+        path_node
+    }
+
     pub fn new_expanded(working_dir: &str) -> Self {
         let mut path_node = Self::from(working_dir);
         path_node.is_dir = true;
@@ -157,6 +163,14 @@ impl PathNode {
         }
     }
 
+    pub fn flat_index_to_tree_index(&self, flat_index: usize) -> TreeIndex {
+        let mut tree_index = TreeIndex::new();
+
+        self.flat_index_to_tree_index_recursive(&mut (flat_index + 1), &mut tree_index);
+
+        tree_index
+    }
+
     fn flat_index_to_tree_index_recursive(
         &self,
         flat_index: &mut usize,
@@ -177,14 +191,6 @@ impl PathNode {
         }
 
         false
-    }
-
-    pub fn flat_index_to_tree_index(&self, flat_index: usize) -> TreeIndex {
-        let mut tree_index = TreeIndex::new();
-
-        self.flat_index_to_tree_index_recursive(&mut (flat_index + 1), &mut tree_index);
-
-        tree_index
     }
 
     pub fn tree_index_to_flat_index_recursive(
@@ -232,16 +238,16 @@ impl PathNode {
 
 #[test]
 fn test_expand() {
-    let mut root = PathNode::new_expanded("/home/xlc/.vim/plugged/vim-clap");
+    let mut root = PathNode::new("/home/xlc/.vim/plugged/vim-clap");
 
     let tree_index = root.flat_index_to_tree_index(0);
     root.expand(&tree_index, &PathNodeOrdering::Top);
     let renderer = crate::renderer::Renderer::new(true);
     let lines = renderer.render(&root);
-
     for line in lines {
         println!("{}", line);
     }
+
     let tree_index = root.flat_index_to_tree_index(7);
     root.expand(&tree_index, &PathNodeOrdering::Top);
     let renderer = crate::renderer::Renderer::new(true);
@@ -249,95 +255,105 @@ fn test_expand() {
     for line in lines {
         println!("{}", line);
     }
+
+    let tree_index = root.flat_index_to_tree_index(2);
+    root.expand(&tree_index, &PathNodeOrdering::Top);
+    let renderer = crate::renderer::Renderer::new(true);
+    let lines = renderer.render(&root);
+    for line in lines {
+        println!("{}", line);
+    }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::cmp::Ordering::Greater;
-    use std::cmp::Ordering::Less;
 
-    mod compare_dirs_bot_simple_tests {
-        use super::*;
-
-        #[test]
-        fn dir_to_dir() {
-            let dir_a = get_dir("dir_a");
-            let dir_b = get_dir("dir_b");
-
-            let order = PathNode::compare_dirs_bot_simple(&dir_a, &dir_b);
-
-            assert_eq!(Less, order);
-        }
-
-        #[test]
-        fn dir_to_file() {
-            let dir = get_dir("something");
-            let file = get_file("something");
-
-            let order = PathNode::compare_dirs_bot_simple(&dir, &file);
-
-            assert_eq!(Greater, order);
-        }
-
-        #[test]
-        fn file_to_file() {
-            let file_a = get_file("file_a");
-            let file_b = get_file("file_b");
-
-            let order = PathNode::compare_dirs_bot_simple(&file_a, &file_b);
-
-            assert_eq!(Less, order);
-        }
-    }
-
-    mod compare_dirs_top_simple_tests {
-        use super::*;
-
-        #[test]
-        fn dir_to_dir() {
-            let dir_a = get_dir("dir_a");
-            let dir_b = get_dir("dir_b");
-
-            let order = PathNode::compare_dirs_top_simple(&dir_a, &dir_b);
-
-            assert_eq!(Less, order);
-        }
-
-        #[test]
-        fn dir_to_file() {
-            let dir = get_dir("something");
-            let file = get_file("something");
-
-            let order = PathNode::compare_dirs_top_simple(&dir, &file);
-
-            assert_eq!(Less, order);
-        }
-
-        #[test]
-        fn file_to_file() {
-            let file_a = get_file("file_a");
-            let file_b = get_file("file_b");
-
-            let order = PathNode::compare_dirs_top_simple(&file_a, &file_b);
-
-            assert_eq!(Less, order);
-        }
-    }
-
-    fn get_dir(name: &str) -> PathNode {
-        let mut path_node = PathNode::from(".");
-        path_node.is_dir = true;
-        path_node.display_text = String::from(name);
+    fn get_expanded_path_node() -> PathNode {
+        let mut path_node = PathNode::from("./tests/test_dirs");
+        path_node.expand(&TreeIndex::new(), &PathNodeOrdering::Top);
+        path_node.expand(&TreeIndex::from(vec![0]), &PathNodeOrdering::Top);
+        path_node.expand(&TreeIndex::from(vec![0, 0]), &PathNodeOrdering::Top);
+        path_node.expand(&TreeIndex::from(vec![1]), &PathNodeOrdering::Top);
+        path_node.expand(&TreeIndex::from(vec![1, 0]), &PathNodeOrdering::Top);
+        path_node.expand(&TreeIndex::from(vec![1, 0, 2]), &PathNodeOrdering::Top);
         path_node
     }
 
-    fn get_file(name: &str) -> PathNode {
-        let mut path_node = PathNode::from(".");
-        path_node.is_dir = false;
-        path_node.display_text = String::from(name);
-        path_node
+    mod get_child_path_node_tests {
+        use super::*;
+
+        #[test]
+        fn first_dirs() {
+            let path_node = {
+                let mut path_node = PathNode::from("./tests/test_dirs");
+                path_node.expand(&TreeIndex::new(), &PathNodeOrdering::Top);
+                path_node.expand(&TreeIndex::from(vec![0]), &PathNodeOrdering::Top);
+                path_node.expand(&TreeIndex::from(vec![0, 0]), &PathNodeOrdering::Top);
+                path_node
+            };
+
+            let child_path_node = path_node.get_child_path_node(&TreeIndex::from(vec![0, 0, 0]));
+
+            assert_eq!("file4", child_path_node.display_text);
+        }
+
+        #[test]
+        fn complex_dirs() {
+            let path_node = get_expanded_path_node();
+
+            let child_path_node = path_node.get_child_path_node(&TreeIndex::from(vec![1, 0, 2, 2]));
+
+            assert_eq!("file12", child_path_node.display_text);
+        }
+    }
+
+    mod tree_index_to_flat_index_tests {
+        use super::*;
+
+        #[test]
+        fn complex_dirs() {
+            let path_node = get_expanded_path_node();
+
+            let flat_index = path_node.tree_index_to_flat_index(&TreeIndex::from(vec![4]));
+
+            assert_eq!(22, flat_index);
+        }
+
+        #[test]
+        fn complex_dirs2() {
+            let path_node = get_expanded_path_node();
+
+            let flat_index = path_node.tree_index_to_flat_index(&TreeIndex::from(vec![5]));
+
+            assert_eq!(23, flat_index);
+        }
+
+        #[test]
+        fn complex_dirs3() {
+            let path_node = get_expanded_path_node();
+
+            let flat_index = path_node.tree_index_to_flat_index(&TreeIndex::from(vec![1, 0, 4]));
+
+            assert_eq!(15, flat_index);
+        }
+
+        #[test]
+        fn total_count() {
+            let path_node = get_expanded_path_node();
+
+            let flat_index = path_node.tree_index_to_flat_index(&TreeIndex::from(vec![100_000]));
+
+            assert_eq!(31, flat_index);
+        }
+
+        #[test]
+        fn zero() {
+            let path_node = get_expanded_path_node();
+
+            let flat_index = path_node.tree_index_to_flat_index(&TreeIndex::from(vec![0]));
+
+            assert_eq!(0, flat_index);
+        }
     }
 }
-*/
