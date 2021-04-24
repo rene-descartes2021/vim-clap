@@ -234,6 +234,36 @@ impl PathNode {
 
         child_node
     }
+
+    pub fn is_node_expanded(&mut self, flat_index: usize) -> bool {
+        let tree_index = self.flat_index_to_tree_index(flat_index);
+
+        let mut path_node = self;
+
+        for i in tree_index.iter() {
+            if path_node.children.len() > *i {
+                path_node = &mut path_node.children[*i];
+            }
+        }
+
+        if !path_node.path.is_dir() {
+            return false;
+        }
+
+        path_node.is_expanded
+    }
+
+    pub fn toggle(&mut self, flat_index: usize) -> Vec<String> {
+        let tree_index = self.flat_index_to_tree_index(flat_index);
+        if self.is_node_expanded(flat_index) {
+            self.collapse(&tree_index);
+        } else {
+            self.expand(&tree_index, &PathNodeOrdering::Top);
+        }
+
+        let renderer = crate::renderer::Renderer::new(true);
+        renderer.render(&self)
+    }
 }
 
 #[test]
@@ -250,14 +280,29 @@ fn test_expand() {
 
     let tree_index = root.flat_index_to_tree_index(7);
     root.expand(&tree_index, &PathNodeOrdering::Top);
+    println!("is expanded: {}", root.is_node_expanded(7));
+    // println!("{:#?}", root);
     let renderer = crate::renderer::Renderer::new(true);
     let lines = renderer.render(&root);
-    for line in lines {
-        println!("{}", line);
-    }
+    // for line in lines {
+    // println!("{}", line);
+    // }
 
     let tree_index = root.flat_index_to_tree_index(2);
     root.expand(&tree_index, &PathNodeOrdering::Top);
+    println!("is expanded: {}", root.is_node_expanded(2));
+    let renderer = crate::renderer::Renderer::new(true);
+    let lines = renderer.render(&root);
+    // for line in lines {
+    // println!("{}", line);
+    // }
+
+    let tree_index = root.flat_index_to_tree_index(4);
+    root.expand(&tree_index, &PathNodeOrdering::Top);
+    println!("is expanded: {}", root.is_node_expanded(4));
+    // for child in &root.children {
+    // println!("{:?}", child);
+    // }
     let renderer = crate::renderer::Renderer::new(true);
     let lines = renderer.render(&root);
     for line in lines {

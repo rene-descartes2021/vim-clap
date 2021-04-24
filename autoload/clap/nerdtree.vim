@@ -38,7 +38,7 @@ function! s:new_window() abort
 endfunction
 
 function! s:toggle_action() abort
-  call clap#client#call('nerdtree/toggle', function('s:nerdtree_callback'), {'lnum': line('.'), 'cwd': clap#rooter#working_dir()})
+  call clap#client#call('nerdtree/on_toggle', function('s:nerdtree_callback'), {'lnum': line('.'), 'cwd': clap#rooter#working_dir()})
 endfunction
 
 function! s:handle_error(error) abort
@@ -76,7 +76,7 @@ function! s:nerdtree_callback(result, error) abort
 endfunction
 
 function! s:notify() abort
-  call clap#client#call_on_init('nerdtree', function('s:nerdtree_callback'), {'lnum': line('.'), 'cwd': clap#rooter#working_dir()})
+  call clap#client#call_on_init('nerdtree/on_init', function('s:nerdtree_callback'), {'lnum': line('.'), 'cwd': clap#rooter#working_dir()})
 endfunction
 
 " Open or update nerdtree buffer given the rendered rows.

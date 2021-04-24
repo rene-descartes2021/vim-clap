@@ -19,10 +19,11 @@ pub type SessionId = u64;
 pub enum Event {
     OnMove(Message),
     OnTyped(Message),
+    Toggle(Message),
 }
 
 pub trait EventHandler: Send + 'static {
-    fn handle(&self, event: Event, context: &SessionContext);
+    fn handle(&mut self, event: Event, context: &SessionContext);
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +39,7 @@ pub struct Session<T> {
 pub enum SessionEvent {
     OnTyped(Message),
     OnMove(Message),
+    Toggle(Message),
     Terminate,
 }
 
@@ -95,6 +97,9 @@ impl<T: EventHandler> Session<T> {
                             SessionEvent::OnTyped(msg) => self
                                 .event_handler
                                 .handle(Event::OnTyped(msg), &self.context),
+                            SessionEvent::Toggle(msg) => {
+                                self.event_handler.handle(Event::Toggle(msg), &self.context)
+                            }
                         }
                     }
                     Err(err) => debug!("session recv error: {:?}", err),

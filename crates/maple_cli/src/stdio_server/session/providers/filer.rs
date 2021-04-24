@@ -81,7 +81,7 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 pub struct FilerMessageHandler;
 
 impl EventHandler for FilerMessageHandler {
-    fn handle(&self, event: Event, context: &SessionContext) {
+    fn handle(&mut self, event: Event, context: &SessionContext) {
         match event {
             Event::OnMove(msg) => {
                 let provider_id = context.provider_id.clone();
@@ -105,6 +105,7 @@ impl EventHandler for FilerMessageHandler {
             }
             // TODO: handle on_typed
             Event::OnTyped(msg) => handle_filer_message(msg),
+            Event::Toggle(_msg) => {}
         }
     }
 }

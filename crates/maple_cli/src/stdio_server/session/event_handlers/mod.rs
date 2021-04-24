@@ -15,7 +15,7 @@ use crate::stdio_server::{
 pub struct DefaultEventHandler;
 
 impl EventHandler for DefaultEventHandler {
-    fn handle(&self, event: Event, context: &SessionContext) {
+    fn handle(&mut self, event: Event, context: &SessionContext) {
         match event {
             Event::OnMove(msg) => {
                 let msg_id = msg.id;
@@ -25,6 +25,7 @@ impl EventHandler for DefaultEventHandler {
                 }
             }
             Event::OnTyped(msg) => on_typed::handle_on_typed(msg, context),
+            Event::Toggle(_msg) => {}
         }
     }
 }

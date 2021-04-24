@@ -28,10 +28,22 @@ impl TreeExplorer {
         }
     }
 
+    pub fn new_simple(root_node: PathNode) -> Self {
+        Self {
+            root_node,
+            renderer: Renderer::new(true),
+            path_node_ordering: PathNodeOrdering::Top,
+        }
+    }
+
     pub fn do_expand(&mut self, cursor_row: usize) -> Vec<String> {
         let tree_index = self.root_node.flat_index_to_tree_index(cursor_row);
         self.root_node.expand(&tree_index, &self.path_node_ordering);
         self.renderer.render(&self.root_node)
+    }
+
+    pub fn do_toggle(&mut self, cursor_row: usize) -> Vec<String> {
+        self.root_node.toggle(cursor_row)
     }
 
     // Reload the opened directories.

@@ -95,6 +95,12 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                 "init_ext_map" => message_handlers::parse_filetypedetect(msg),
                 "filer" => filer::handle_filer_message(msg),
                 "nerdtree" => session::nerdtree::handle_nerdtree_message(msg),
+                "nerdtree/on_init" => session_manager.new_session(
+                    msg.session_id,
+                    msg,
+                    session::nerdtree::ExplorerSession,
+                ),
+                "nerdtree/on_toggle" => session_manager.send(msg.session_id, Toggle(msg)),
                 "nerdtree/toggle" => session::nerdtree::toggle(msg),
                 "dumb_jump" => dumb_jump::handle_dumb_jump_message(msg),
                 "filer/on_init" => session_manager.new_session(msg.session_id, msg, FilerSession),
