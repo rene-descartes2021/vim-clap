@@ -145,7 +145,13 @@ impl Renderer {
     fn get_indent(&self, depth: usize, is_last: bool) -> String {
         let indent = " ".repeat(self.indent - 1);
         if is_last {
-            format!("└ {}{}", self.indent_char, indent).repeat(depth)
+            if depth > 1 {
+                let pre = format!("│ {}{}", self.indent_char, indent).repeat(depth - 1);
+                let post = format!("└ {}{}", self.indent_char, indent);
+                format!("{}{}", pre, post)
+            } else {
+                format!("└ {}{}", self.indent_char, indent).repeat(depth)
+            }
         } else {
             format!("│ {}{}", self.indent_char, indent).repeat(depth)
         }
