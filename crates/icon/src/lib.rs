@@ -42,6 +42,10 @@ pub fn get_icon_or(path: &Path, default: Icon) -> Icon {
         })
 }
 
+pub fn get_icon_or_default(path: &Path) -> Icon {
+    get_icon_or(path, DEFAULT_FILER_ICON)
+}
+
 pub fn icon_for(line: &str) -> Icon {
     let path = Path::new(line);
     get_icon_or(&path, DEFAULT_ICON)

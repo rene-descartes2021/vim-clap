@@ -14,7 +14,7 @@ impl Default for Renderer {
         Self {
             use_utf8: true,
             show_indent: true,
-            indent: 4,
+            indent: 2,
             indent_char: ' ',
             icon_char: Default::default(),
         }
@@ -56,8 +56,9 @@ impl Renderer {
         let icon_char = if use_utf8 {
             IconChar {
                 err: '⨯',
-                expanded: '▼',
-                collapsed: '▶',
+                expanded: '',
+
+                collapsed: '',
             }
         } else {
             IconChar {
@@ -103,10 +104,12 @@ impl Renderer {
         texts: &mut Vec<String>,
         depth: usize,
     ) {
-        for child in &path_node.children {
+        for (i, child) in path_node.children.iter().enumerate() {
             let dir_prefix = self.get_dir_prefix(child);
             let dir_suffix = self.get_dir_suffix(child);
-            let indent = self.get_indent(depth);
+
+            // FIXME: is_last
+            let indent = self.get_indent(depth, i == path_node.children.len() - 1);
 
             let text = format!(
                 "{}{}{}{}",
@@ -115,6 +118,7 @@ impl Renderer {
                 child.display_text.clone(),
                 dir_suffix,
             );
+
             texts.push(text);
             self.render_path_node_recursive(child, texts, depth + 1);
         }
@@ -125,7 +129,8 @@ impl Renderer {
             let expanded_indicator = self.icon_char.char_for(path_node);
             format!("{} ", expanded_indicator)
         } else {
-            String::from("  ")
+            format!("{} ", icon::get_icon_or_default(path_node.path.as_ref()))
+            // String::from("  ")
         }
     }
 
@@ -137,9 +142,13 @@ impl Renderer {
         }
     }
 
-    fn get_indent(&self, depth: usize) -> String {
+    fn get_indent(&self, depth: usize, is_last: bool) -> String {
         let indent = " ".repeat(self.indent - 1);
-        format!("{}{}", self.indent_char, indent).repeat(depth)
+        if is_last {
+            format!("└ {}{}", self.indent_char, indent).repeat(depth)
+        } else {
+            format!("│ {}{}", self.indent_char, indent).repeat(depth)
+        }
     }
 }
 

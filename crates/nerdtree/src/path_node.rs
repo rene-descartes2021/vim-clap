@@ -253,6 +253,20 @@ impl PathNode {
         path_node.is_expanded
     }
 
+    pub fn path_node_at(&mut self, flat_index: usize) -> &PathNode {
+        let tree_index = self.flat_index_to_tree_index(flat_index);
+
+        let mut path_node = self;
+
+        for i in tree_index.iter() {
+            if path_node.children.len() > *i {
+                path_node = &mut path_node.children[*i];
+            }
+        }
+
+        path_node
+    }
+
     pub fn toggle(&mut self, flat_index: usize) -> Vec<String> {
         let tree_index = self.flat_index_to_tree_index(flat_index);
         if self.is_node_expanded(flat_index) {

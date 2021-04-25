@@ -985,6 +985,9 @@ dependencies = [
 [[package]]
 name = "nerdtree"
 version = "0.1.0"
+dependencies = [
+ "icon",
+]
 
 [[package]]
 name = "net2"

@@ -28,6 +28,28 @@ impl EventHandler for ExplorerMessageHandler {
             Event::Toggle(msg) => {
                 debug!("-------------- handle toggle message");
                 let lnum = msg.get_lnum();
+
+                if self
+                    .tree_explorer
+                    .root_node
+                    .path_node_at(lnum - 1)
+                    .path
+                    .is_file()
+                {
+                    let canonicalized_path =
+                        std::fs::canonicalize(self.tree_explorer.root_node.path.as_path()).unwrap();
+                    let line = canonicalized_path.to_str().unwrap().to_string();
+
+                    let result = json!({
+                    "file": line,
+                    });
+
+                    let result =
+                        json!({ "id": msg.id, "provider_id": "nerdtree", "result": result });
+
+                    return write_response(result);
+                }
+
                 let lines = self.tree_explorer.do_toggle(lnum - 1);
 
                 let result = json!({

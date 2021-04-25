@@ -24,6 +24,7 @@ function! s:new_window() abort
   setlocal nolist
   setlocal nospell
   setlocal nowrap
+  setlocal nomodifiable
 
   setlocal nonumber
   if v:version >= 703
@@ -34,6 +35,7 @@ function! s:new_window() abort
 
   setlocal filetype=nerdtree
 
+  nnoremap <silent> <buffer> o         :<c-u>call <SID>toggle_action()<CR>
   nnoremap <silent> <buffer> <CR>      :<c-u>call <SID>toggle_action()<CR>
 endfunction
 
@@ -72,7 +74,14 @@ function! s:nerdtree_callback(result, error) abort
     return
   endif
 
+  if has_key(a:result, 'file')
+    execute 'edit' a:result.file
+    return
+  endif
+
+  call setbufvar(g:nerdtree_bufnr, '&modifiable', 1)
   call s:setbuflines(g:nerdtree_bufnr, a:result.lines)
+  call setbufvar(g:nerdtree_bufnr, '&modifiable', 0)
 endfunction
 
 function! s:notify() abort
