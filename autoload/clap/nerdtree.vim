@@ -87,7 +87,7 @@ function! s:nerdtree_callback(result, error) abort
   call setbufvar(g:nerdtree_bufnr, '&modifiable', 0)
 endfunction
 
-function! s:notify() abort
+function! s:init() abort
   call clap#client#call_on_init('nerdtree/on_init', function('s:nerdtree_callback'), {'lnum': line('.'), 'cwd': clap#rooter#working_dir()})
 endfunction
 
@@ -110,7 +110,7 @@ function! clap#nerdtree#open() abort
 
   " TODO:
   " send request
-  call s:notify()
+  call s:init()
 
   if !g:vista_stay_on_open
     wincmd p

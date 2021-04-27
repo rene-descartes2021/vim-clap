@@ -83,16 +83,20 @@ impl NewSession for ExplorerSession {
 
         let root_node = PathNode::new(&cwd);
 
-        handle_nerdtree_message(msg.clone());
+        // handle_nerdtree_message(msg.clone());
 
-        let session = Session {
+        let mut session = Session {
             session_id: msg.session_id,
-            context: msg.into(),
+            context: msg.clone().into(),
             event_handler: ExplorerMessageHandler {
                 tree_explorer: nerdtree::TreeExplorer::new_simple(root_node),
             },
             event_recv: session_receiver,
         };
+
+        session
+            .event_handler
+            .handle(Event::Toggle(msg), &session.context);
 
         session.start_event_loop()?;
 

@@ -269,6 +269,10 @@ impl PathNode {
 
     pub fn toggle(&mut self, flat_index: usize) -> Vec<String> {
         let tree_index = self.flat_index_to_tree_index(flat_index);
+        log::debug!(
+            "--------- is expanded: {}",
+            self.is_node_expanded(flat_index)
+        );
         if self.is_node_expanded(flat_index) {
             self.collapse(&tree_index);
         } else {

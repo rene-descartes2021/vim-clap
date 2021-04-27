@@ -987,6 +987,7 @@ name = "nerdtree"
 version = "0.1.0"
 dependencies = [
  "icon",
+ "log",
 ]
 
 [[package]]
