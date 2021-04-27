@@ -36,8 +36,14 @@ impl EventHandler for ExplorerMessageHandler {
                     .path
                     .is_file()
                 {
-                    let canonicalized_path =
-                        std::fs::canonicalize(self.tree_explorer.root_node.path.as_path()).unwrap();
+                    let canonicalized_path = std::fs::canonicalize(
+                        self.tree_explorer
+                            .root_node
+                            .path_node_at(lnum - 1)
+                            .path
+                            .as_path(),
+                    )
+                    .unwrap();
                     let line = canonicalized_path.to_str().unwrap().to_string();
 
                     let result = json!({

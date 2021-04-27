@@ -75,6 +75,9 @@ function! s:nerdtree_callback(result, error) abort
   endif
 
   if has_key(a:result, 'file')
+    if bufname('') ==# '__nerdtree__'
+      wincmd p
+    endif
     execute 'edit' a:result.file
     return
   endif
