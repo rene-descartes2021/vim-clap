@@ -94,14 +94,13 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                 "initialize_global_env" => initialize_global(msg), // should be called only once.
                 "init_ext_map" => message_handlers::parse_filetypedetect(msg),
                 "filer" => filer::handle_filer_message(msg),
-                "nerdtree" => session::nerdtree::handle_nerdtree_message(msg),
-                "nerdtree/on_init" => session_manager.new_session(
+                "file_explorer/on_init" => session_manager.new_session(
                     msg.session_id,
                     msg,
-                    session::nerdtree::ExplorerSession,
+                    session::file_explorer::ExplorerSession,
                 ),
-                "nerdtree/on_toggle" => session_manager.send(msg.session_id, Toggle(msg)),
-                "nerdtree/toggle" => session::nerdtree::toggle(msg),
+                "file_explorer/on_toggle" => session_manager.send(msg.session_id, Toggle(msg)),
+                "file_explorer/toggle" => session::file_explorer::toggle(msg),
                 "dumb_jump" => dumb_jump::handle_dumb_jump_message(msg),
                 "filer/on_init" => session_manager.new_session(msg.session_id, msg, FilerSession),
                 "filer/on_move" => session_manager.send(msg.session_id, OnMove(msg)),

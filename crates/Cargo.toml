@@ -6,7 +6,7 @@ members = [
     "maple_cli",
     "matcher",
     "matcher/extracted_fzy",
-    "nerdtree",
+    "file_explorer",
     "pattern",
     "printer",
     "source_item",

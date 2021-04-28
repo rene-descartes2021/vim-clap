@@ -1,6 +1,6 @@
 pub mod dumb_jump;
 pub mod filer;
-pub mod nerdtree;
+pub mod file_explorer;
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
