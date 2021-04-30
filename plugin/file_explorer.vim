@@ -102,7 +102,7 @@ function! FileExplorerOpen() abort
     let g:file_explorer_winid = win_getid()
     let g:file_explorer_pos = [winsaveview(), winnr(), winrestcmd()]
   else
-    let winnr = g:file_explorer_winnr
+    let winnr = winbufnr(g:file_explorer_bufnr)
     if winnr == -1
       call s:new_window()
     elseif winnr() != winnr
@@ -121,7 +121,7 @@ endfunction
 
 function! FileExplorerClose() abort
   if exists('g:file_explorer_bufnr')
-    let winnr = g:file_explorer_winnr
+    let winnr = winbufnr(g:file_explorer_bufnr)
 
     " Jump back to the previous window if we are in the nerdtree sidebar atm.
     if winnr == winnr()
