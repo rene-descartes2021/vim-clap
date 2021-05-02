@@ -99,7 +99,7 @@ fn print_recursive(root_tree_tag: &TreeTag) {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileTags {
     pub root_tags: Vec<TreeTag>,
 }
