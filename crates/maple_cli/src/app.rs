@@ -24,6 +24,8 @@ pub enum Cmd {
     /// Generate the project-wide tags using ctags.
     #[structopt(name = "tags")]
     Tags(crate::cmd::tags::Tags),
+    #[structopt(name = "ctags")]
+    Ctags(crate::cmd::ctags::Ctags),
     /// Interact with the cache info.
     #[structopt(name = "cache")]
     Cache(crate::cmd::cache::Cache),
@@ -102,6 +104,7 @@ impl Maple {
             Cmd::Exec(exec) => exec.run(self.params)?,
             Cmd::Grep(grep) => grep.run(self.params)?,
             Cmd::Tags(tags) => tags.run(self.params)?,
+            Cmd::Ctags(ctags) => ctags.run(self.params)?,
             Cmd::Cache(cache) => cache.run()?,
             Cmd::Blines(blines) => blines.run(self.params)?,
             Cmd::Filter(filter) => filter.run(self.params)?,
