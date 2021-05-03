@@ -1,6 +1,6 @@
-use std::hash::Hash;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+use std::{fmt::Debug, hash::Hash};
 
 use anyhow::Result;
 use itertools::Itertools;
@@ -30,16 +30,23 @@ pub struct Ctags {
     exclude: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ScopeName(String);
+
+impl Debug for ScopeName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\"{}\"", self.0)
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Scope {
     #[serde(rename = "scope")]
     pub name: ScopeName,
-    pub scope_kind: String,
+    #[serde(rename = "scopeKind")]
+    pub kind: String,
 }
 
 /// Type parsed from the line produced by ctags.
@@ -104,10 +111,7 @@ pub struct FileTags {
     pub root_tags: Vec<TreeTag>,
 }
 
-fn formatted_tags_stream(
-    args: &[&str],
-    dir: impl AsRef<Path>,
-) -> Result<impl Iterator<Item = BaseTag>> {
+fn collect_basetags(args: &[&str], dir: impl AsRef<Path>) -> Result<impl Iterator<Item = BaseTag>> {
     let stdout_stream = subprocess::Exec::shell(args.join(" "))
         .cwd(dir)
         .stream_stdout()?;
@@ -133,9 +137,6 @@ impl Ctags {
     ) -> Result<()> {
         ensure_has_json_support()?;
 
-        // In case of passing an invalid icon-painter option.
-        let icon_painter = icon_painter.map(|_| icon::IconPainter::ProjTags);
-
         let cmd = "ctags --format=2 --excmd=pattern --fields=+nksSaf --extras=+F --sort=no --append=no --extras=  --language-force=rust --rust-kinds=cPstvfgieMnm --output-format=json --fields=-PF -f- /home/xlc/.vim/plugged/vim-clap/crates/maple_cli/src/tools/ctags.rs";
 
         let py_cmd = "ctags --format=2 --excmd=pattern --fields=+nksSaf --extras=+F --sort=no --append=no --extras=  --language-force=python --python-kinds=cvfim --output-format=json --fields=-PF -f- /home/xlc/.vim/plugged/vista.vim/test/data/ctags_tree_view.py";
@@ -145,7 +146,7 @@ impl Ctags {
             .map(Into::into)
             .collect::<Vec<_>>();
 
-        let taglines = formatted_tags_stream(&cmd_args, &self.dir)?.collect::<Vec<_>>();
+        let taglines = collect_basetags(&cmd_args, &self.dir)?.collect::<Vec<_>>();
 
         let mut root_tree_tags = taglines
             .iter()
@@ -169,7 +170,8 @@ impl Ctags {
         for root_tag in root_tree_tags.iter() {
             print_recursive(root_tag);
         }
-        // println!("root tags: {:?}", root_tree_tags);
+
+        println!("root tags: {:#?}", root_tree_tags);
 
         Ok(())
     }
