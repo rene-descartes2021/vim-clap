@@ -310,6 +310,14 @@ name = "extracted_fzy"
 version = "0.1.0"
 
 [[package]]
+name = "file_explorer"
+version = "0.1.0"
+dependencies = [
+ "icon",
+ "log",
+]
+
+[[package]]
 name = "filter"
 version = "0.1.0"
 dependencies = [
@@ -839,6 +847,7 @@ dependencies = [
  "bytecount",
  "crossbeam-channel",
  "curl",
+ "file_explorer",
  "filter",
  "futures",
  "icon",
@@ -846,7 +855,6 @@ dependencies = [
  "itertools",
  "log",
  "log4rs",
- "nerdtree",
  "once_cell",
  "pattern",
  "printer",
@@ -981,14 +989,6 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
-]
-
-[[package]]
-name = "nerdtree"
-version = "0.1.0"
-dependencies = [
- "icon",
- "log",
 ]
 
 [[package]]

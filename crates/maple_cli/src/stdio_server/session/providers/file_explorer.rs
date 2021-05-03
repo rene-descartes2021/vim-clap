@@ -7,7 +7,7 @@ use log::debug;
 use serde_json::json;
 
 use icon::prepend_filer_icon;
-use nerdtree::PathNode;
+use file_explorer::PathNode;
 
 use crate::stdio_server::{
     session::{
@@ -19,7 +19,7 @@ use crate::stdio_server::{
 
 #[derive(Clone)]
 pub struct ExplorerMessageHandler {
-    pub tree_explorer: nerdtree::TreeExplorer,
+    pub tree_explorer: file_explorer::TreeExplorer,
 }
 
 impl EventHandler for ExplorerMessageHandler {
@@ -51,7 +51,7 @@ impl EventHandler for ExplorerMessageHandler {
                     });
 
                     let result =
-                        json!({ "id": msg.id, "provider_id": "nerdtree", "result": result });
+                        json!({ "id": msg.id, "provider_id": "file_explorer", "result": result });
 
                     return write_response(result);
                 }
@@ -62,7 +62,7 @@ impl EventHandler for ExplorerMessageHandler {
                 "lines": lines,
                 });
 
-                let result = json!({ "id": msg.id, "provider_id": "nerdtree", "result": result });
+                let result = json!({ "id": msg.id, "provider_id": "file_explorer", "result": result });
 
                 write_response(result);
             }
@@ -79,17 +79,15 @@ impl NewSession for ExplorerSession {
 
         let cwd = msg.get_cwd();
         let lnum = msg.get_lnum();
-        debug!("Recv nerdtree params: cwd:{}", cwd,);
+        debug!("Recv file explorer params: cwd:{}", cwd,);
 
         let root_node = PathNode::new(&cwd);
-
-        // handle_nerdtree_message(msg.clone());
 
         let mut session = Session {
             session_id: msg.session_id,
             context: msg.clone().into(),
             event_handler: ExplorerMessageHandler {
-                tree_explorer: nerdtree::TreeExplorer::new_simple(root_node),
+                tree_explorer: file_explorer::TreeExplorer::new_simple(root_node),
             },
             event_recv: session_receiver,
         };
@@ -108,7 +106,7 @@ pub fn handle_nerdtree_message(msg: Message) {
     tokio::spawn(async move {
         let cwd = msg.get_cwd();
         let lnum = msg.get_lnum();
-        debug!("Recv nerdtree params: cwd:{}", cwd,);
+        debug!("Recv file_explorer params: cwd:{}", cwd,);
 
         let mut root = PathNode::new(&cwd);
         let lines = root.expand_at(lnum - 1);
@@ -117,7 +115,7 @@ pub fn handle_nerdtree_message(msg: Message) {
         "lines": lines,
         });
 
-        let result = json!({ "id": msg.id, "provider_id": "nerdtree", "result": result });
+        let result = json!({ "id": msg.id, "provider_id": "file_explorer", "result": result });
 
         write_response(result);
     });
@@ -126,7 +124,7 @@ pub fn handle_nerdtree_message(msg: Message) {
 pub fn toggle(msg: Message) {
     tokio::spawn(async move {
         let cwd = msg.get_cwd();
-        debug!("Recv nerdtree params: cwd:{}", cwd,);
+        debug!("Recv file_explorer params: cwd:{}", cwd,);
         let lnum = msg.get_lnum();
 
         let mut root = PathNode::new_expanded(&cwd);
@@ -137,45 +135,8 @@ pub fn toggle(msg: Message) {
         "lines": lines,
         });
 
-        let result = json!({ "id": msg.id, "provider_id": "nerdtree", "result": result });
+        let result = json!({ "id": msg.id, "provider_id": "file_explorer", "result": result });
 
         write_response(result);
     });
 }
-
-/*
-pub struct TreeExplorerSession;
-
-impl NewSession for TreeExplorerSession {
-    fn new_session(&self, msg: Message, event_handler: T) -> Result<Sender<SessionEvent>> {
-        let (session_sender, session_receiver) = crossbeam_channel::unbounded();
-
-        let session = Session {
-            session_id: msg.session_id,
-            context: msg.into(),
-            event_handler,
-            event_recv: session_receiver,
-        };
-
-        debug!("new tree explorer session context: {:?}", session.context);
-
-        session.start_event_loop()?;
-
-        Ok(session_sender)
-    }
-}
-
-#[derive(Clone)]
-pub struct TreeExplorerEventHandler;
-
-impl EventHandler for TreeExplorerEventHandler {
-    fn handle(&self, event: Event, context: &SessionContext) {
-        match event {
-            Event::OnMove(msg) => {
-                todo!("unimplemented for tree explorer")
-            }
-            Event::OnTyped(msg) => todo!("OnTyped unimplemented for tree explorer"),
-        }
-    }
-}
-*/

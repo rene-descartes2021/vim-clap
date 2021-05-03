@@ -1,3 +1,5 @@
+let s:BUFFER = '__nerdtree__'
+
 function! s:new_window() abort
   if exists('g:vista_sidebar_open_cmd')
     let open = g:vista_sidebar_open_cmd
@@ -6,9 +8,9 @@ function! s:new_window() abort
   endif
 
   if get(g:, 'vista_sidebar_keepalt', 0)
-    silent execute 'keepalt '.open '__nerdtree__'
+    silent execute 'keepalt '.open s:BUFFER
   else
-    silent execute open '__nerdtree__'
+    silent execute open s:BUFFER
   endif
 
   " Options for a non-file/control buffer.
@@ -40,7 +42,7 @@ function! s:new_window() abort
 endfunction
 
 function! s:toggle_action() abort
-  call clap#client#call('nerdtree/on_toggle', function('s:nerdtree_callback'), {'lnum': line('.'), 'cwd': clap#rooter#working_dir()})
+  call clap#client#call('file_explorer/on_toggle', function('s:file_explorer_callback'), {'lnum': line('.'), 'cwd': clap#rooter#working_dir()})
 endfunction
 
 function! s:handle_error(error) abort
@@ -68,39 +70,39 @@ else
     endfunction
 endif
 
-function! s:nerdtree_callback(result, error) abort
+function! s:file_explorer_callback(result, error) abort
   if a:error isnot v:null
     call s:handle_error(a:error)
     return
   endif
 
   if has_key(a:result, 'file')
-    if bufname('') ==# '__nerdtree__'
-      wincmd p
+    if bufname('') ==# s:BUFFER
+      noautocmd wincmd p
     endif
     execute 'edit' a:result.file
     return
   endif
 
-  call setbufvar(g:nerdtree_bufnr, '&modifiable', 1)
-  call s:setbuflines(g:nerdtree_bufnr, a:result.lines)
-  call setbufvar(g:nerdtree_bufnr, '&modifiable', 0)
+  call setbufvar(g:file_explorer_bufnr, '&modifiable', 1)
+  call s:setbuflines(g:file_explorer_bufnr, a:result.lines)
+  call setbufvar(g:file_explorer_bufnr, '&modifiable', 0)
 endfunction
 
 function! s:init() abort
-  call clap#client#call_on_init('nerdtree/on_init', function('s:nerdtree_callback'), {'lnum': line('.'), 'cwd': clap#rooter#working_dir()})
+  call clap#client#call_on_init('file_explorer/on_init', function('s:file_explorer_callback'), {'lnum': line('.'), 'cwd': clap#rooter#working_dir()})
 endfunction
 
 " Open or update nerdtree buffer given the rendered rows.
-function! clap#nerdtree#open() abort
+function! FileExplorerOpen() abort
   " (Re)open a window and move to it
-  if !exists('g:nerdtree_bufnr')
+  if !exists('g:file_explorer_bufnr')
     call s:new_window()
-    let g:nerdtree_bufnr = bufnr('%')
-    let g:nerdtree_winid = win_getid()
-    let g:nerdtree_pos = [winsaveview(), winnr(), winrestcmd()]
+    let g:file_explorer_bufnr = bufnr('%')
+    let g:file_explorer_winid = win_getid()
+    let g:file_explorer_pos = [winsaveview(), winnr(), winrestcmd()]
   else
-    let winnr = g:nerdtree_winnr
+    let winnr = winbufnr(g:file_explorer_bufnr)
     if winnr == -1
       call s:new_window()
     elseif winnr() != winnr
@@ -117,9 +119,9 @@ function! clap#nerdtree#open() abort
   endif
 endfunction
 
-function! clap#nerdtree#close() abort
-  if exists('g:nerdtree_bufnr')
-    let winnr = g:nerdtree_winnr
+function! FileExplorerClose() abort
+  if exists('g:file_explorer_bufnr')
+    let winnr = winbufnr(g:file_explorer_bufnr)
 
     " Jump back to the previous window if we are in the nerdtree sidebar atm.
     if winnr == winnr()
@@ -130,7 +132,7 @@ function! clap#nerdtree#close() abort
       noautocmd execute winnr.'wincmd c'
     endif
 
-    silent execute  g:nerdtree_bufnr.'bwipe!'
-    unlet g:nerdtree_bufnr
+    silent execute  g:file_explorer_bufnr.'bwipe!'
+    unlet g:file_explorer_bufnr
   endif
 endfunction
