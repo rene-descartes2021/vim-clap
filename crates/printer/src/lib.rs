@@ -131,6 +131,9 @@ fn truncate_text(
         println!("--- initial indices: {:?}", indices);
         println!("--- left: {:?}", left);
 
+        let prefix_fmt =
+            |s: String| format!("{}{}", text.chars().take(prefix_len).collect::<String>(), s);
+
         if !overflow(&left, max_width - DOTS_LEN) {
             println!("-------- 1");
             let mut trimmed = trim_right(text, max_width - DOTS_LEN).to_string();
@@ -146,7 +149,8 @@ fn truncate_text(
             println!("after indices: {:?}", indices);
 
             println!("-------- 3");
-            Some((trimmed, indices))
+            // Some((trimmed, indices))
+            Some((prefix_fmt(trimmed), indices))
         } else {
             println!("-------- 4");
             let (text, indices_diff) = if overflow(right, DOTS_LEN) {
@@ -171,12 +175,13 @@ fn truncate_text(
                         *x
                     }
                 })
-                .map(|x| x + 2)
+                .map(|x| x + 2 + prefix_len + 2)
                 .take_while(|x| *x < max_width - indices_diff)
                 .collect::<Vec<_>>();
 
             println!("-------- 8, shifted_indices: {:?}", shifted_indices);
-            Some((format!("{}{}", DOTS, text), shifted_indices))
+            // Some((format!("{}{}", DOTS, text), shifted_indices))
+            Some((prefix_fmt(format!("{}{}", DOTS, text)), shifted_indices))
         }
     } else {
         None
