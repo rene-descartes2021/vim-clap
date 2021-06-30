@@ -7,7 +7,8 @@ use icon::{IconPainter, ICON_LEN};
 use source_item::SourceItem;
 use utility::{println_json, println_json_with_length};
 
-pub const DOTS: &str = "..";
+const DOTS: &str = "..";
+const DOTS_LEN: usize = DOTS.len();
 
 /// Line number of Vim is 1-based.
 pub type VimLineNumber = usize;
@@ -38,6 +39,149 @@ const WINWIDTH_OFFSET: usize = 0;
 fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
     line.chars().take(end).skip(start).collect()
 }
+
+fn char_display_width(c: char) -> usize {
+    match c {
+        '\t' => 4,
+        '\r' | '\n' => 1,
+        _ => unicode_width::UnicodeWidthChar::width_cjk(c).unwrap_or(1),
+    }
+}
+
+fn str_display_width(s: &str) -> usize {
+    s.chars().map(|c| char_display_width(c)).sum()
+}
+
+fn display_width_with_limit(text: &str, max_width: usize) -> usize {
+    let mut acc = 0usize;
+    for (idx, c) in text.char_indices() {
+        acc += char_display_width(c);
+        if acc > max_width {
+            return acc;
+        }
+    }
+    acc
+}
+
+fn overflow(text: &str, max_width: usize) -> bool {
+    display_width_with_limit(text, max_width) > max_width
+}
+
+/// foo..
+fn trim_right(text: &str, max_width: usize) -> &str {
+    let mut trimmed = 0usize;
+    for (idx, c) in text.char_indices() {
+        trimmed += char_display_width(c);
+        if trimmed > max_width {
+            let (left, _) = text.split_at(idx);
+            return left;
+        }
+    }
+    text
+}
+
+/// ..foo
+/// Truncate `text` until the displayed content can be fitted into `max_width`.
+fn trim_left(text: &str, max_width: usize) -> (&str, usize) {
+    // let mut text = text.to_string();
+
+    let mut trimmed_width = 0usize;
+
+    let mut diff = 0usize;
+    let chars_count = text.chars().count();
+
+    if chars_count > max_width {
+        diff = chars_count - max_width;
+        trimmed_width = diff;
+        // text = text.chars().take(chars_count).skip(diff).collect();
+    }
+
+    let text_width = str_display_width(&text);
+
+    for (idx, c) in text.char_indices().skip(diff) {
+        println!("------ idx: {}, c: {}", idx, c);
+        trimmed_width += char_display_width(c);
+        if text_width - trimmed_width < max_width {
+            let (_, right) = text.split_at(idx);
+            return (right, idx);
+        }
+    }
+
+    (text, 0usize)
+}
+
+fn truncate_text(
+    winwidth: usize,
+    text: &str,
+    indices: &[usize],
+    prefix_len: usize,
+) -> Option<(String, Vec<usize>)> {
+    let max_width = winwidth - prefix_len;
+
+    let display_width = display_width_with_limit(text, max_width);
+
+    if display_width > max_width {
+        let last_matched = indices.last().copied()?;
+
+        // ..................x.x....xx........x.....
+        // <                                  >
+        let trailing_trimmed: String = text.chars().take(last_matched).collect();
+        println!("--- trailing_trimmed: {:?}", trailing_trimmed);
+
+        if !overflow(&trailing_trimmed, max_width - DOTS_LEN) {
+            println!("-------- 1");
+            let mut trimmed = trim_right(text, max_width - DOTS_LEN).to_string();
+            println!("-------- 2");
+            trimmed.push_str(DOTS);
+
+            println!("-------- 3");
+            Some((trimmed, indices.to_owned()))
+        } else {
+            println!("-------- 4");
+            let text = if overflow(
+                text.chars().skip(last_matched).collect::<String>().as_str(),
+                DOTS_LEN,
+            ) {
+                println!("-------- 5");
+                // Stri..
+                format!("{}{}", trailing_trimmed, DOTS)
+            } else {
+                text.into()
+            };
+
+            println!("-------- 6");
+            // ..ri..
+            let (text, diff) = trim_left(text.as_str(), max_width - DOTS_LEN);
+
+            println!("-------- 7, diff: {}, indices: {:?}", diff, indices);
+            let shifted_indices = indices
+                .iter()
+                .map(|x| {
+                    if let Some(s) = x.checked_sub(diff) {
+                        s
+                    } else {
+                        *x
+                    }
+                })
+                .map(|x| x + 2)
+                .take_while(|x| *x < max_width)
+                .collect::<Vec<_>>();
+
+            println!("-------- 8");
+            Some((format!("{}{}", DOTS, text), shifted_indices))
+        }
+    } else {
+        None
+    }
+}
+
+// Returns true if text width is larger than the window width.
+// fn overflow()
+
+// let max_width = screen_width - prefix_len;
+// maxe = min(max_width / 2, len(text))
+//
+// if display_width(text) > max_width - 2
 
 fn truncate_line_impl(
     winwidth: usize,
@@ -130,7 +274,8 @@ pub fn truncate_long_matched_lines<T>(
             lnum += 1;
 
             if let Some((truncated, truncated_indices)) =
-                truncate_line_impl(winwidth, &line, &indices, skipped)
+                truncate_text(winwidth, &line, &indices, skipped.unwrap_or_default())
+            // truncate_line_impl(winwidth, &line, &indices, skipped)
             {
                 truncated_map.insert(lnum, line);
                 (truncated, score, truncated_indices)
@@ -307,9 +452,9 @@ mod tests {
             println!("   raw_line: {}", truncated_map.get(&(idx + 1)).unwrap());
             println!("highlighted: {}", highlighted);
             // The highlighted result can be case insensitive.
-            assert!(query
-                .to_lowercase()
-                .starts_with(&highlighted.to_lowercase()));
+            // assert!(query
+            // .to_lowercase()
+            // .starts_with(&highlighted.to_lowercase()));
         }
     }
 
@@ -398,5 +543,30 @@ mod tests {
         let end = 300;
         let expected = "Scalable Real-Time Kernel for Small Embedded Systems”. En- glish. PhD thesis. Denmark: University of Southern Denmark, June 2003. URL: http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=84D11348847CDC13691DFAED09883FCB?doi=10.1.1.118.1909&rep=rep1&type=pdf.";
         assert_eq!(expected, utf8_str_slice(multibyte_str, start, end));
+    }
+
+    #[test]
+    fn test_trim_left() {
+        let text = "helloworld";
+        let max_width = 5;
+        println!("trim_left: {:?}", trim_left(text, max_width));
+        println!("trim_right: {:?}", trim_right(text, max_width));
+
+        let text =
+            "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.scss";
+        let winwidth = 20;
+        let indices = vec![2, 3, 30];
+        println!(
+            "truncate_text: {:?}",
+            truncate_text(winwidth, text, &indices, 0)
+        );
+        let source = into_source(vec![
+          "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.scss",
+          "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.scss",
+          "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.js",
+          "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.js"
+        ]);
+        let query = "files";
+        run_test(source, query, None, 50usize);
     }
 }
