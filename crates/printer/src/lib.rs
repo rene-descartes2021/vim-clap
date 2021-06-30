@@ -127,28 +127,34 @@ fn truncate_text(
 
         // ..................x.x....xx........x.....
         // <                                  >
-        let trailing_trimmed: String = text.chars().take(last_matched).collect();
-        println!("--- trailing_trimmed: {:?}", trailing_trimmed);
+        let (left, right) = text.split_at(last_matched);
+        println!("--- initial indices: {:?}", indices);
+        println!("--- left: {:?}", left);
 
-        if !overflow(&trailing_trimmed, max_width - DOTS_LEN) {
+        if !overflow(&left, max_width - DOTS_LEN) {
             println!("-------- 1");
             let mut trimmed = trim_right(text, max_width - DOTS_LEN).to_string();
             println!("-------- 2");
             trimmed.push_str(DOTS);
 
+            println!("before indices: {:?}", indices);
+            let indices = indices
+                .into_iter()
+                .filter(|x| **x < (max_width - DOTS_LEN))
+                .copied()
+                .collect::<Vec<_>>();
+            println!("after indices: {:?}", indices);
+
             println!("-------- 3");
-            Some((trimmed, indices.to_owned()))
+            Some((trimmed, indices))
         } else {
             println!("-------- 4");
-            let text = if overflow(
-                text.chars().skip(last_matched).collect::<String>().as_str(),
-                DOTS_LEN,
-            ) {
+            let (text, indices_diff) = if overflow(right, DOTS_LEN) {
                 println!("-------- 5");
                 // Stri..
-                format!("{}{}", trailing_trimmed, DOTS)
+                (format!("{}{}", left, DOTS), 2)
             } else {
-                text.into()
+                (text.into(), 0)
             };
 
             println!("-------- 6");
@@ -166,10 +172,10 @@ fn truncate_text(
                     }
                 })
                 .map(|x| x + 2)
-                .take_while(|x| *x < max_width)
+                .take_while(|x| *x < max_width - indices_diff)
                 .collect::<Vec<_>>();
 
-            println!("-------- 8");
+            println!("-------- 8, shifted_indices: {:?}", shifted_indices);
             Some((format!("{}{}", DOTS, text), shifted_indices))
         }
     } else {
@@ -381,7 +387,9 @@ mod tests {
                 "    display: {}",
                 wrap_matches(&truncated_line, &truncated_indices)
             );
+            println!("truncated_indices: {:?}", truncated_indices);
             println!("   raw_line: {}", truncated_map.get(&(idx + 1)).unwrap());
+            println!("      query: {}", query);
             println!("highlighted: {}", highlighted);
             // The highlighted result can be case insensitive.
             // assert!(query
