@@ -1,13 +1,16 @@
 //! This crate provides the feature of diplaying the information of filtered lines
 //! by printing them to stdout in JSON format.
 
+mod legacy;
+
 use std::collections::HashMap;
 
 use icon::{IconPainter, ICON_LEN};
 use source_item::SourceItem;
 use utility::{println_json, println_json_with_length};
 
-pub const DOTS: &str = "..";
+const DOTS: &str = "..";
+const DOTS_LEN: usize = DOTS.len();
 
 /// Line number of Vim is 1-based.
 pub type VimLineNumber = usize;
@@ -39,75 +42,159 @@ fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
     line.chars().take(end).skip(start).collect()
 }
 
-fn truncate_line_impl(
+fn char_display_width(c: char) -> usize {
+    match c {
+        '\t' => 4,
+        '\r' | '\n' => 1,
+        _ => unicode_width::UnicodeWidthChar::width_cjk(c).unwrap_or(1),
+    }
+}
+
+fn str_display_width(s: &str) -> usize {
+    s.chars().map(|c| char_display_width(c)).sum()
+}
+
+fn display_width_with_limit(text: &str, max_width: usize) -> usize {
+    let mut acc = 0usize;
+    for (idx, c) in text.char_indices() {
+        acc += char_display_width(c);
+        if acc > max_width {
+            return acc;
+        }
+    }
+    acc
+}
+
+fn overflow(text: &str, max_width: usize) -> bool {
+    display_width_with_limit(text, max_width) > max_width
+}
+
+/// foo..
+fn trim_right(text: &str, max_width: usize) -> &str {
+    let mut trimmed = 0usize;
+    for (idx, c) in text.char_indices() {
+        trimmed += char_display_width(c);
+        if trimmed > max_width {
+            let (left, _) = text.split_at(idx);
+            return left;
+        }
+    }
+    text
+}
+
+/// ..foo
+/// Truncate `text` until the displayed content can be fitted into `max_width`.
+fn trim_left(text: &str, max_width: usize) -> (&str, usize) {
+    // let mut text = text.to_string();
+
+    let mut trimmed_width = 0usize;
+
+    let mut diff = 0usize;
+    let chars_count = text.chars().count();
+
+    if chars_count > max_width {
+        diff = chars_count - max_width;
+        trimmed_width = diff;
+        // text = text.chars().take(chars_count).skip(diff).collect();
+    }
+
+    let text_width = str_display_width(&text);
+
+    for (idx, c) in text.char_indices().skip(diff) {
+        println!("------ idx: {}, c: {}", idx, c);
+        trimmed_width += char_display_width(c);
+        if text_width - trimmed_width < max_width {
+            let (_, right) = text.split_at(idx);
+            return (right, idx);
+        }
+    }
+
+    (text, 0usize)
+}
+
+fn truncate_text(
     winwidth: usize,
-    line: &str,
+    text: &str,
     indices: &[usize],
-    skipped: Option<usize>,
+    prefix_len: usize,
 ) -> Option<(String, Vec<usize>)> {
-    let last_idx = indices.last()?;
-    if *last_idx > winwidth {
-        let mut start = *last_idx - winwidth;
-        if start >= indices[0] || (indices.len() > 1 && *last_idx - start > winwidth) {
-            start = indices[0];
-        }
-        let line_len = line.len();
-        // [--------------------------]
-        // [-----------------------------------------------------------------xx--x--]
-        for _ in 0..3 {
-            if indices[0] - start >= DOTS.len() && line_len - start >= winwidth {
-                start += DOTS.len();
-            } else {
-                break;
-            }
-        }
-        let trailing_dist = line_len - last_idx;
-        if trailing_dist < indices[0] - start {
-            start += trailing_dist;
-        }
-        let end = line.len();
-        let left_truncated = if let Some(n) = skipped {
-            let icon: String = line.chars().take(n).collect();
-            format!("{}{}{}", icon, DOTS, utf8_str_slice(&line, start, end))
+    let max_width = winwidth - prefix_len;
+
+    let display_width = display_width_with_limit(text, max_width);
+
+    if display_width > max_width {
+        let last_matched = indices.last().copied()?;
+
+        // ..................x.x....xx........x.....
+        // <                                  >
+        let (left, right) = text.split_at(last_matched);
+        println!("--- initial indices: {:?}", indices);
+        println!("--- left: {:?}", left);
+
+        let prefix_fmt =
+            |s: String| format!("{}{}", text.chars().take(prefix_len).collect::<String>(), s);
+
+        if !overflow(&left, max_width - DOTS_LEN) {
+            println!("-------- 1");
+            let mut trimmed = trim_right(text, max_width - DOTS_LEN).to_string();
+            println!("-------- 2");
+            trimmed.push_str(DOTS);
+
+            println!("before indices: {:?}", indices);
+            let indices = indices
+                .into_iter()
+                .filter(|x| **x < (max_width - DOTS_LEN))
+                .copied()
+                .collect::<Vec<_>>();
+            println!("after indices: {:?}", indices);
+
+            println!("-------- 3");
+            // Some((trimmed, indices))
+            Some((prefix_fmt(trimmed), indices))
         } else {
-            format!("{}{}", DOTS, utf8_str_slice(&line, start, end))
-        };
-
-        let offset = line_len.saturating_sub(left_truncated.len());
-
-        let left_truncated_len = left_truncated.len();
-
-        let (truncated, max_index) = if left_truncated_len > winwidth {
-            if left_truncated_len == winwidth + 1 {
-                (
-                    format!("{}.", utf8_str_slice(&left_truncated, 0, winwidth - 1)),
-                    winwidth - 1,
-                )
+            println!("-------- 4");
+            let (text, indices_diff) = if overflow(right, DOTS_LEN) {
+                println!("-------- 5");
+                // Stri..
+                (format!("{}{}", left, DOTS), 2)
             } else {
-                (
-                    format!(
-                        "{}{}",
-                        utf8_str_slice(&left_truncated, 0, winwidth - 2),
-                        DOTS
-                    ),
-                    winwidth - 2,
-                )
-            }
-        } else {
-            (left_truncated, winwidth)
-        };
+                (text.into(), 0)
+            };
 
-        let truncated_indices = indices
-            .iter()
-            .map(|x| x - offset)
-            .take_while(|x| *x < max_index)
-            .collect::<Vec<_>>();
+            println!("-------- 6");
+            // ..ri..
+            let (text, diff) = trim_left(text.as_str(), max_width - DOTS_LEN);
 
-        Some((truncated, truncated_indices))
+            println!("-------- 7, diff: {}, indices: {:?}", diff, indices);
+            let shifted_indices = indices
+                .iter()
+                .map(|x| {
+                    if let Some(s) = x.checked_sub(diff) {
+                        s
+                    } else {
+                        *x
+                    }
+                })
+                .map(|x| x + 2 + prefix_len + 2)
+                .take_while(|x| *x < max_width - indices_diff)
+                .collect::<Vec<_>>();
+
+            println!("-------- 8, shifted_indices: {:?}", shifted_indices);
+            // Some((format!("{}{}", DOTS, text), shifted_indices))
+            Some((prefix_fmt(format!("{}{}", DOTS, text)), shifted_indices))
+        }
     } else {
         None
     }
 }
+
+// Returns true if text width is larger than the window width.
+// fn overflow()
+
+// let max_width = screen_width - prefix_len;
+// maxe = min(max_width / 2, len(text))
+//
+// if display_width(text) > max_width - 2
 
 /// Long matched lines can cause the matched items invisible.
 ///
@@ -130,7 +217,8 @@ pub fn truncate_long_matched_lines<T>(
             lnum += 1;
 
             if let Some((truncated, truncated_indices)) =
-                truncate_line_impl(winwidth, &line, &indices, skipped)
+                truncate_text(winwidth, &line, &indices, skipped.unwrap_or_default())
+            // truncate_line_impl(winwidth, &line, &indices, skipped)
             {
                 truncated_map.insert(lnum, line);
                 (truncated, score, truncated_indices)
@@ -158,7 +246,7 @@ pub fn truncate_grep_lines(
             lnum += 1;
 
             if let Some((truncated, truncated_indices)) =
-                truncate_line_impl(winwidth, &line, &indices, skipped)
+                crate::legacy::truncate_line_impl(winwidth, &line, &indices, skipped)
             {
                 truncated_map.insert(lnum, line);
                 (truncated, truncated_indices)
@@ -457,5 +545,22 @@ mod tests {
         let end = 300;
         let expected = "Scalable Real-Time Kernel for Small Embedded Systems”. En- glish. PhD thesis. Denmark: University of Southern Denmark, June 2003. URL: http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=84D11348847CDC13691DFAED09883FCB?doi=10.1.1.118.1909&rep=rep1&type=pdf.";
         assert_eq!(expected, utf8_str_slice(multibyte_str, start, end));
+    }
+
+    #[test]
+    fn test_trim_left() {
+        let text = "helloworld";
+        let max_width = 5;
+        println!("trim_left: {:?}", trim_left(text, max_width));
+        println!("trim_right: {:?}", trim_right(text, max_width));
+
+        let text =
+            "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.scss";
+        let winwidth = 20;
+        let indices = vec![2, 3, 30];
+        println!(
+            "truncate_text: {:?}",
+            truncate_text(winwidth, text, &indices, 0)
+        );
     }
 }
