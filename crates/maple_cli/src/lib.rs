@@ -1,10 +1,11 @@
 mod app;
+mod dumb_analyzer;
 mod logger;
 mod process;
 mod stdio_server;
 mod tools;
 
-pub mod cmd;
+pub mod commands;
 /// Re-exports.
 pub use {
     anyhow::{Context, Result},

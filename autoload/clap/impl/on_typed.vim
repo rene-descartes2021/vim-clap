@@ -1,5 +1,5 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Default implementation for various hooks.
+" Description: Default implementation for on_typed hook.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
@@ -182,7 +182,7 @@ endfunction
 "          \
 "           \
 "             on_move
-function! clap#impl#on_typed() abort
+function! clap#impl#on_typed#() abort
   " If user explicitly uses the external filter, just use the async impl then,
   " even the forerunner job is finished already.
   if clap#api#has_externalfilter()
@@ -191,6 +191,8 @@ function! clap#impl#on_typed() abort
   endif
 
   if exists('g:__clap_forerunner_result')
+        \ || g:clap.provider.source_type == g:__t_list
+        \ || g:clap.provider.source_type == g:__t_func_list
     call s:on_typed_sync_impl()
     return
   endif

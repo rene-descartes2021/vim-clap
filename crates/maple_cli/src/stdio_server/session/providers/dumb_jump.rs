@@ -1,7 +1,7 @@
 use log::{debug, error};
 use serde_json::json;
 
-use crate::cmd::dumb_jump::{DumbJump, Lines};
+use crate::commands::dumb_jump::{DumbJump, Lines};
 use crate::stdio_server::{write_response, Message};
 
 pub fn handle_dumb_jump_message(msg: Message) {
@@ -18,7 +18,7 @@ pub fn handle_dumb_jump_message(msg: Message) {
             cmd_dir: Some(cwd.into()),
         };
 
-        let result = match dumb_jump.references_or_occurrences().await {
+        let result = match dumb_jump.references_or_occurrences(false).await {
             Ok(Lines {
                 mut lines,
                 mut indices,

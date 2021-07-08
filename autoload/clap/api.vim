@@ -44,6 +44,10 @@ function! clap#api#get_origin_line_at(lnum) abort
         \ && has_key(g:__clap_lines_truncated_map, a:lnum)
     let t_line = g:__clap_lines_truncated_map[a:lnum]
     " NOTE: t_line[3] is not 100% right
+    if g:clap.provider.id ==# 'grep'
+      " The icon offset has been considered on the Rust side.
+      return t_line
+    endif
     if g:clap_enable_icon && index(s:has_no_icons, g:clap.provider.id) == -1 && t_line[3] !=# ' '
       return getbufline(g:clap.display.bufnr, a:lnum)[0][:3] . t_line
     else
@@ -636,7 +640,6 @@ endfunction
 
 function! clap#api#bake() abort
   let g:clap = {}
-  let g:clap.is_busy = 0
 
   let g:clap.registrar = {}
   let g:clap.spinner = {}
