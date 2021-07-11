@@ -1,5 +1,6 @@
 pub mod dumb_jump;
 pub mod filer;
+pub mod proj_tags;
 pub mod quickfix;
 
 use anyhow::Result;
