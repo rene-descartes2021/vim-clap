@@ -49,13 +49,11 @@ pub struct RecursiveTags {
     exclude: Vec<String>,
 }
 
-fn formatted_tags_stream(
-    args: &[&str],
+pub fn create_tags_stream(
+    cmdstr: &str,
     dir: impl AsRef<Path>,
 ) -> Result<impl Iterator<Item = String>> {
-    let stdout_stream = subprocess::Exec::shell(args.join(" "))
-        .cwd(dir)
-        .stream_stdout()?;
+    let stdout_stream = subprocess::Exec::shell(cmdstr).cwd(dir).stream_stdout()?;
     Ok(BufReader::new(stdout_stream).lines().filter_map(|line| {
         line.ok().and_then(|tag| {
             if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
@@ -65,6 +63,25 @@ fn formatted_tags_stream(
             }
         })
     }))
+}
+
+pub fn formatted_tags_stream(
+    args: &[&str],
+    dir: impl AsRef<Path>,
+) -> Result<impl Iterator<Item = String>> {
+    create_tags_stream(&args.join(" "), dir)
+    // let stdout_stream = subprocess::Exec::shell(args.join(" "))
+    // .cwd(dir)
+    // .stream_stdout()?;
+    // Ok(BufReader::new(stdout_stream).lines().filter_map(|line| {
+    // line.ok().and_then(|tag| {
+    // if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
+    // Some(tag.display_line())
+    // } else {
+    // None
+    // }
+    // })
+    // }))
 }
 
 fn create_tags_cache<T: AsRef<Path> + Clone + Hash>(

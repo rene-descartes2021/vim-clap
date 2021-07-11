@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::error;
@@ -11,6 +13,22 @@ use crate::stdio_server::{
     },
     write_response, Message,
 };
+
+const CMD: &str = "ctags -R -x --output-format=json --fields=+n";
+
+/// Generate ctags recursively given the directory.
+#[derive(Debug, Clone)]
+pub struct ProjTags {
+    dir: PathBuf,
+}
+
+impl ProjTags {
+    pub fn execute(&self) -> Vec<String> {
+        crate::commands::recursive_tags::create_tags_stream(CMD, &self.dir)
+            .unwrap()
+            .collect()
+    }
+}
 
 pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<String> {
     let msg_id = msg.id;
@@ -138,6 +156,7 @@ impl NewSession for ProjTagsSession {
         session.start_event_loop()?;
 
         tokio::spawn(async move {
+            // Handle init
             handle_dumb_jump_message(msg, true).await;
         });
 
