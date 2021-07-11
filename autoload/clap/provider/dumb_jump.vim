@@ -46,6 +46,10 @@ function! s:handle_response(result, error) abort
   call clap#preview#async_open_with_delay()
 endfunction
 
+function! clap#provider#dumb_jump#handle_response(result, error) abort
+  call s:handle_response(a:result, a:error)
+endfunction
+
 function! s:dumb_jump.on_typed() abort
   let extension = fnamemodify(bufname(g:clap.start.bufnr), ':e')
   call clap#client#call('dumb_jump/on_typed', function('s:handle_response'), {

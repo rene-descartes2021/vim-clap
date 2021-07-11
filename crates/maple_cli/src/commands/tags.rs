@@ -17,9 +17,11 @@ use crate::tools::ctags::{ensure_has_json_support, TagInfo};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
+pub const CTAGS_EXCLUDE: &str = ".git,*.json,node_modules,target,_build";
+
 /// Generate ctags recursively given the directory.
 #[derive(StructOpt, Debug, Clone)]
-pub struct Tags {
+pub struct RecursiveTags {
     /// Initial query string
     #[structopt(index = 1, short, long)]
     query: String,
@@ -43,7 +45,7 @@ pub struct Tags {
     /// Exclude files and directories matching 'pattern'.
     ///
     /// Will be translated into ctags' option: --exclude=pattern.
-    #[structopt(long, default_value = ".git,*.json,node_modules,target,_build")]
+    #[structopt(long, default_value = CTAGS_EXCLUDE)]
     exclude: Vec<String>,
 }
 
@@ -80,7 +82,7 @@ fn create_tags_cache<T: AsRef<Path> + Clone + Hash>(
     Ok((cache, total))
 }
 
-impl Tags {
+impl RecursiveTags {
     pub fn run(
         &self,
         Params {

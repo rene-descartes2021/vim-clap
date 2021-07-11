@@ -31,6 +31,12 @@ function! s:proj_tags.init() abort
   if clap#maple#is_available()
     call clap#rooter#try_set_cwd()
     call clap#job#regular#forerunner#start_command(clap#maple#command#tags(v:true))
+    call clap#client#call_on_init('proj_tags/on_init', function('clap#provider#dumb_jump#handle_response'), {
+          \ 'provider_id': g:clap.provider.id,
+          \ 'query': has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get(),
+          \ 'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
+          \ 'cwd': clap#rooter#working_dir(),
+          \ })
   endif
 endfunction
 
