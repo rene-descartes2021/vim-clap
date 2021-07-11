@@ -25,7 +25,7 @@ pub enum Cmd {
     DumbJump(commands::dumb_jump::DumbJump),
     /// Generate the project-wide tags using ctags.
     #[structopt(name = "tags")]
-    RecursiveTags(commands::tags::RecursiveTags),
+    RecursiveTags(commands::recursive_tags::RecursiveTags),
     /// Interact with the cache info.
     #[structopt(name = "cache")]
     Cache(commands::cache::Cache),
