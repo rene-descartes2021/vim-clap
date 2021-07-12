@@ -30,6 +30,42 @@ impl ProjTags {
     }
 }
 
+pub async fn collect_dumb_jump_source(
+    msg: Message,
+    session: Session<ProjTagsMessageHandler>,
+) -> Result<()> {
+    let msg_id = msg.id;
+
+    let dir: PathBuf = session.context.cwd.clone().into();
+    let proj_tags = ProjTags { dir };
+    let lines = proj_tags.execute();
+
+    if session.is_running() {
+        // Send the forerunner result to client.
+        let initial_size = lines.len();
+        let response_lines = lines
+            .iter()
+            .by_ref()
+            .take(100)
+            .map(|line| icon::IconPainter::ProjTags.paint(&line))
+            .collect::<Vec<_>>();
+        write_response(json!({
+        "id": msg_id,
+        "provider_id": session.context.provider_id,
+        "result": {
+          "event": "on_init",
+          "initial_size": initial_size,
+          "lines": response_lines,
+        }}));
+
+        let mut session = session;
+        log::debug!("========== setting source list: {}", initial_size);
+        session.set_source_list(lines);
+    }
+
+    Ok(())
+}
+
 pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<String> {
     let msg_id = msg.id;
 
@@ -112,16 +148,10 @@ impl EventHandler for ProjTagsMessageHandler {
             Event::OnMove(msg) => {
                 let msg_id = msg.id;
 
-                let lnum = msg.get_u64("lnum").expect("lnum exists");
-
                 // lnum is 1-indexed
-                if let Some(curline) = self.lines.get((lnum - 1) as usize) {
-                    if let Err(e) = OnMoveHandler::try_new(&msg, &context, Some(curline.into()))
-                        .map(|x| x.handle())
-                    {
-                        log::error!("Failed to handle OnMove event: {:?}", e);
-                        write_response(json!({"error": e.to_string(), "id": msg_id }));
-                    }
+                if let Err(e) = OnMoveHandler::try_new(&msg, &context, None).map(|x| x.handle()) {
+                    log::error!("Failed to handle OnMove event: {:?}", e);
+                    write_response(json!({"error": e.to_string(), "id": msg_id }));
                 }
             }
             Event::OnTyped(msg) => {
@@ -153,11 +183,20 @@ impl NewSession for ProjTagsSession {
             event_recv: session_receiver,
         };
 
+        let session_clone = session.clone();
+
         session.start_event_loop()?;
 
+        // TODO: choose different fitler strategy according to the time forerunner job spent.
         tokio::spawn(async move {
-            // Handle init
-            handle_dumb_jump_message(msg, true).await;
+            let msg_id = msg.id;
+            if let Err(e) = collect_dumb_jump_source(msg, session_clone).await {
+                log::error!(
+                    "Error occurred when running the forerunner job, msg_id: {}, error: {:?}",
+                    msg_id,
+                    e
+                );
+            }
         });
 
         Ok(session_sender)

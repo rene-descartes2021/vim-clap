@@ -14,7 +14,7 @@ use serde_json::json;
 use self::session::{
     dumb_jump,
     filer::{self, FilerSession},
-    message_handlers, quickfix, GeneralSession, SessionEvent, SessionManager,
+    message_handlers, proj_tags, quickfix, GeneralSession, SessionEvent, SessionManager,
 };
 use self::types::{GlobalEnv, Message};
 
@@ -86,6 +86,7 @@ fn loop_read_rpc_message(reader: impl BufRead, sink: &Sender<String>) {
 
 fn loop_handle_rpc_message(rx: &Receiver<String>) {
     use dumb_jump::DumbJumpSession;
+    use proj_tags::ProjTagsSession;
     use SessionEvent::*;
 
     let mut manager = SessionManager::default();
@@ -101,6 +102,10 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                 "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(msg),
                 "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                 "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
+
+                "proj_tags/on_init" => manager.new_session::<ProjTagsSession>(msg),
+                "proj_tags/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
+                "proj_tags/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
                 "filer" => filer::handle_filer_message(msg),
                 "filer/on_init" => manager.new_session::<FilerSession>(msg),

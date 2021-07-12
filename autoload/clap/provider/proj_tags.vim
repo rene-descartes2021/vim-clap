@@ -24,6 +24,11 @@ function! s:proj_tags.on_typed() abort
   else
     call clap#filter#async#dyn#start_directly(clap#maple#build_cmd('tags', g:clap.input.get(), clap#rooter#working_dir()))
   endif
+  call clap#client#call('proj_tags/on_typed', function('clap#provider#dumb_jump#handle_response'), {
+        \ 'provider_id': g:clap.provider.id,
+        \ 'query': g:clap.input.get(),
+        \ 'cwd': clap#rooter#working_dir(),
+        \ })
 endfunction
 
 function! s:proj_tags.init() abort
