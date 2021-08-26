@@ -21,6 +21,10 @@ impl NewSession for GeneralSession {
         let (session, session_sender) = Session::new(msg, DefaultEventHandler);
         log::debug!("New general session context: {:?}", session.context);
 
+        if session.context.provider_id.as_str() == "blines" {
+            tokio::spawn(async {});
+        }
+
         // FIXME: Actually unused for now
         if let Some(source_cmd) = session.context.source_cmd.clone() {
             let session_cloned = session.clone();
