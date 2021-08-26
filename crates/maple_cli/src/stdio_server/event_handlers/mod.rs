@@ -16,6 +16,8 @@ use crate::stdio_server::{
 
 pub use on_move::{OnMove, OnMoveHandler};
 
+use super::types::Message;
+
 #[derive(Clone)]
 pub struct DefaultEventHandler;
 
@@ -32,8 +34,43 @@ impl EventHandler for DefaultEventHandler {
                     write_response(json!({"error": e.to_string(), "id": msg_id }));
                 }
             }
-            Event::OnTyped(msg) => on_typed::handle_on_typed(msg, &context),
+            // Event::OnTyped(msg) => on_typed::handle_on_typed(msg, &context),
+            Event::OnTyped(msg) => {
+                if let Err(e) = handle_on_typed(msg, &context) {
+                    log::error!("Error occurred when handling OnTyped message: {:?}", e);
+                }
+            }
         }
         Ok(())
     }
+}
+
+fn handle_on_typed(msg: Message, context: &SessionContext) -> Result<()> {
+    use filter::{dyn_run, FilterContext, Source};
+
+    match context.provider_id.as_str() {
+        "blines" => {
+            dyn_run(
+                &msg.get_query(),
+                Source::List(
+                    std::fs::read_to_string(&context.start_buffer_path)?
+                        .lines()
+                        .enumerate()
+                        .map(|(idx, item)| format!("{} {}", idx + 1, item))
+                        .map(Into::into),
+                ),
+                FilterContext::new(
+                    None,
+                    Some(30),
+                    Some(context.display_winwidth as usize),
+                    None,
+                    filter::matcher::MatchType::Full,
+                ),
+                Default::default(),
+            )?;
+        }
+        _ => log::error!("Unknown provider_id in general handle_on_typed"),
+    }
+
+    Ok(())
 }

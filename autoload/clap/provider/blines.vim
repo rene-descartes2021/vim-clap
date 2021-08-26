@@ -20,9 +20,13 @@ function! clap#provider#blines#format(lines) abort
   return map(a:lines, 'printf(linefmt, v:key + 1, v:val)')
 endfunction
 
-function! s:blines.source() abort
-  return clap#provider#blines#format(g:clap.start.get_lines())
+function! s:blines.on_typed() abort
+  call clap#client#call("on_typed", v:null, {'query': g:clap.input.get()})
 endfunction
+
+" function! s:blines.source() abort
+  " return clap#provider#blines#format(g:clap.start.get_lines())
+" endfunction
 
 function! s:blines.on_move() abort
   let items = split(g:clap.display.getcurline())
@@ -42,16 +46,16 @@ function! s:blines.on_enter() abort
 endfunction
 
 function! s:blines.init() abort
-  let line_count = g:clap.start.line_count()
-  let g:clap.display.initial_size = line_count
+  " let line_count = g:clap.start.line_count()
+  " let g:clap.display.initial_size = line_count
 
-  if line_count > 0 && line_count < 100000
-    let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
-    call g:clap.display.set_lines_lazy(clap#provider#blines#format(lines))
-    call g:clap#display_win.shrink_if_undersize()
-    call clap#indicator#set_matches_number(line_count)
-    call clap#sign#toggle_cursorline()
-  endif
+  " if line_count > 0 && line_count < 100000
+    " let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
+    " call g:clap.display.set_lines_lazy(clap#provider#blines#format(lines))
+    " call g:clap#display_win.shrink_if_undersize()
+    " call clap#indicator#set_matches_number(line_count)
+    " call clap#sign#toggle_cursorline()
+  " endif
 endfunction
 
 function! s:into_qf_entry(line) abort
