@@ -1,3 +1,5 @@
+use icon::IconPainter;
+use matcher::Bonus;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
@@ -51,12 +53,13 @@ pub async fn handle_recent_files_message(
             filter::FilterContext::new(
                 None,
                 Some(30),
-                Some(80),
-                None,
+                Some(context.display_winwidth as usize),
+                Some(IconPainter::File),
                 filter::matcher::MatchType::Full,
             ),
-            vec![],
-        ).unwrap();
+            vec![Bonus::FileName],
+        )
+        .unwrap();
 
         return Default::default();
     }
