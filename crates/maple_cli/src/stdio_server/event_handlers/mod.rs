@@ -34,43 +34,38 @@ impl EventHandler for DefaultEventHandler {
     }
 
     async fn handle_on_typed(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
-        // Event::OnTyped(msg) => on_typed::handle_on_typed(msg, &context),
-        //
         // TODO: kill last unfinished job and start new one.
-        if let Err(e) = handle_on_typed_impl(msg, &context) {
-            log::error!("Error occurred when handling OnTyped message: {:?}", e);
+        use filter::{dyn_run, FilterContext, Source};
+
+        match context.provider_id.as_str() {
+            "blines" => {
+                dyn_run(
+                    &msg.get_query(),
+                    Source::List(
+                        std::fs::read_to_string(&context.start_buffer_path)?
+                            .lines()
+                            .enumerate()
+                            .map(|(idx, item)| format!("{} {}", idx + 1, item))
+                            .map(Into::into),
+                    ),
+                    FilterContext::new(
+                        None,
+                        Some(30),
+                        Some(context.display_winwidth as usize),
+                        None,
+                        filter::matcher::MatchType::Full,
+                    ),
+                    Default::default(),
+                )?;
+            }
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "Unknown provider_id: {} in general handle_on_typed",
+                    context.provider_id
+                ));
+            }
         }
 
         Ok(())
     }
-}
-
-fn handle_on_typed_impl(msg: Message, context: &SessionContext) -> Result<()> {
-    use filter::{dyn_run, FilterContext, Source};
-
-    match context.provider_id.as_str() {
-        "blines" => {
-            dyn_run(
-                &msg.get_query(),
-                Source::List(
-                    std::fs::read_to_string(&context.start_buffer_path)?
-                        .lines()
-                        .enumerate()
-                        .map(|(idx, item)| format!("{} {}", idx + 1, item))
-                        .map(Into::into),
-                ),
-                FilterContext::new(
-                    None,
-                    Some(30),
-                    Some(context.display_winwidth as usize),
-                    None,
-                    filter::matcher::MatchType::Full,
-                ),
-                Default::default(),
-            )?;
-        }
-        _ => log::error!("Unknown provider_id in general handle_on_typed"),
-    }
-
-    Ok(())
 }
