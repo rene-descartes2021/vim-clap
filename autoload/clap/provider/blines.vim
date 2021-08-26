@@ -20,14 +20,6 @@ function! clap#provider#blines#format(lines) abort
   return map(a:lines, 'printf(linefmt, v:key + 1, v:val)')
 endfunction
 
-function! s:blines.on_typed() abort
-  call clap#client#call("on_typed", v:null, {'query': g:clap.input.get()})
-endfunction
-
-" function! s:blines.source() abort
-  " return clap#provider#blines#format(g:clap.start.get_lines())
-" endfunction
-
 function! s:blines.on_move() abort
   let items = split(g:clap.display.getcurline())
   if empty(items)
@@ -45,18 +37,32 @@ function! s:blines.on_enter() abort
   call g:clap.display.setbufvar('&syntax', 'clap_blines')
 endfunction
 
-function! s:blines.init() abort
-  " let line_count = g:clap.start.line_count()
-  " let g:clap.display.initial_size = line_count
+if clap#maple#is_available()
+  function! s:blines.on_typed() abort
+    call clap#client#notify("on_typed", {'query': g:clap.input.get()})
+  endfunction
+else
+  function! s:blines.source() abort
+    return clap#provider#blines#format(g:clap.start.get_lines())
+  endfunction
 
-  " if line_count > 0 && line_count < 100000
-    " let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
-    " call g:clap.display.set_lines_lazy(clap#provider#blines#format(lines))
-    " call g:clap#display_win.shrink_if_undersize()
-    " call clap#indicator#set_matches_number(line_count)
-    " call clap#sign#toggle_cursorline()
-  " endif
-endfunction
+  function! s:blines.init() abort
+    let line_count = g:clap.start.line_count()
+    let g:clap.display.initial_size = line_count
+
+    if line_count > 0 && line_count < 100000
+      let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
+      call g:clap.display.set_lines_lazy(clap#provider#blines#format(lines))
+      call g:clap#display_win.shrink_if_undersize()
+      call clap#indicator#set_matches_number(line_count)
+      call clap#sign#toggle_cursorline()
+    endif
+  endfunction
+
+  " if Source() is 1,000,000+ lines, it could be very slow, e.g.,
+  " `blines` provider, so we did a hard code for blines provider here.
+  let s:blines.source_type = g:__t_func_list
+endif
 
 function! s:into_qf_entry(line) abort
   if a:line =~# '^\s*\d\+ '
@@ -71,9 +77,6 @@ function! s:blines_sink_star(lines) abort
   call clap#util#open_quickfix(map(a:lines, 's:into_qf_entry(v:val)'))
 endfunction
 
-" if Source() is 1,000,000+ lines, it could be very slow, e.g.,
-" `blines` provider, so we did a hard code for blines provider here.
-let s:blines.source_type = g:__t_func_list
 let s:blines['sink*'] = function('s:blines_sink_star')
 let s:blines.on_move_async = function('clap#impl#on_move#async')
 let g:clap#provider#blines# = s:blines

@@ -35,6 +35,8 @@ impl EventHandler for DefaultEventHandler {
                 }
             }
             // Event::OnTyped(msg) => on_typed::handle_on_typed(msg, &context),
+            //
+            // TODO: kill last unfinished job and start new one.
             Event::OnTyped(msg) => {
                 if let Err(e) = handle_on_typed(msg, &context) {
                     log::error!("Error occurred when handling OnTyped message: {:?}", e);
