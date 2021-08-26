@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
+use futures::future::AbortHandle;
 use log::debug;
 
 use crate::stdio_server::types::{Message, ProviderId};
@@ -30,6 +31,8 @@ pub struct Session<T> {
     /// Each Session can have its own message processing logic.
     pub event_handler: T,
     pub event_recv: crossbeam_channel::Receiver<SessionEvent>,
+    pub last_on_typed_running: bool,
+    pub last_abort_handle: Option<AbortHandle>,
 }
 
 #[derive(Debug, Clone)]
@@ -49,7 +52,7 @@ impl SessionEvent {
     }
 }
 
-impl<T: EventHandler> Session<T> {
+impl<T: EventHandler + Clone> Session<T> {
     pub fn new(msg: Message, event_handler: T) -> (Self, Sender<SessionEvent>) {
         let (session_sender, session_receiver) = crossbeam_channel::unbounded();
 
@@ -58,6 +61,8 @@ impl<T: EventHandler> Session<T> {
             context: Arc::new(msg.into()),
             event_handler,
             event_recv: session_receiver,
+            last_on_typed_running: false,
+            last_abort_handle: None,
         };
 
         (session, session_sender)
@@ -123,13 +128,42 @@ impl<T: EventHandler> Session<T> {
                                 }
                             }
                             SessionEvent::OnTyped(msg) => {
-                                if let Err(e) = self
-                                    .event_handler
-                                    .handle_on_typed(msg, self.context.clone())
-                                    .await
-                                {
-                                    debug!("Error occurrred when handling OnTyped event: {:?}", e);
-                                }
+                                self.last_on_typed_running = true;
+
+                                let mut event_handler_clone = self.event_handler.clone();
+                                let context_clone = self.context.clone();
+                                let (task, handle) = futures::future::abortable(async move {
+                                    if let Err(e) = event_handler_clone
+                                        .handle_on_typed(msg, context_clone)
+                                        .await
+                                    {
+                                        debug!(
+                                            "Error occurrred when handling OnTyped event: {:?}",
+                                            e
+                                        );
+                                    }
+                                });
+                                tokio::spawn(task);
+
+                                self.last_abort_handle = Some(handle);
+
+                                // self.handl
+
+                                // if self.last_on_typed_running {
+
+                                // handle.abort();
+
+                                // }
+
+                                // if let Err(e) = self
+                                // .event_handler
+                                // .handle_on_typed(msg, self.context.clone())
+                                // .await
+                                // {
+                                // debug!("Error occurrred when handling OnTyped event: {:?}", e);
+                                // } else {
+                                // self.last_on_typed_running = false;
+                                // }
                             }
                         }
                     }

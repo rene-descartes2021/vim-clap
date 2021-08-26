@@ -7,7 +7,7 @@ use crate::stdio_server::{
     write_response,
 };
 
-pub async fn run<T: EventHandler>(
+pub async fn run<T: EventHandler + Clone>(
     msg_id: u64,
     source_cmd: String,
     session: Session<T>,
