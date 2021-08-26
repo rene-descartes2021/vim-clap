@@ -147,7 +147,7 @@ fn try_notify_top_results(
                 lines.push(text);
             }
 
-            let method = "s:process_response";
+            let method = "s:process_filter_result";
 
             if last_lines != lines.as_slice() {
                 println_json_with_length!(total, lines, indices, method);

@@ -247,7 +247,7 @@ pub fn print_dyn_filter_results(
         icon_painter,
     );
 
-    let method = "s:process_response";
+    let method = "s:process_filter_result";
     if truncated_map.is_empty() {
         println_json_with_length!(total, lines, indices, method);
     } else {
