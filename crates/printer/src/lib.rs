@@ -247,10 +247,11 @@ pub fn print_dyn_filter_results(
         icon_painter,
     );
 
+    let method = "s:process_response";
     if truncated_map.is_empty() {
-        println_json_with_length!(total, lines, indices);
+        println_json_with_length!(total, lines, indices, method);
     } else {
-        println_json_with_length!(total, lines, indices, truncated_map);
+        println_json_with_length!(total, lines, indices, truncated_map, method);
     }
 }
 

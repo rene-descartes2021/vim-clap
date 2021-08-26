@@ -8,8 +8,23 @@ let s:req_id = get(s:, 'req_id', 0)
 let s:session_id = get(s:, 'session_id', 0)
 let s:handlers = get(s:, 'handlers', {})
 
+
+function! s:process_response(msg) abort
+  echom string(a:msg)
+  " call clap#state#handle_message(a:msg)
+  " call clap#preview#async_open_with_delay()
+endfunction
+
 function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
+
+  echom string(decoded)
+  if has_key(decoded, 'method')
+    echom 'decoded.method:'.string(decoded.method)
+    let F = decoded.method
+    call F(msg)
+    return
+  endif
 
   if has_key(decoded, 'force_execute') && has_key(s:handlers, decoded.id)
     let Handler = remove(s:handlers, decoded.id)

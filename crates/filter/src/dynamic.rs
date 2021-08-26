@@ -147,11 +147,13 @@ fn try_notify_top_results(
                 lines.push(text);
             }
 
+            let method = "s:process_response";
+
             if last_lines != lines.as_slice() {
-                println_json_with_length!(total, lines, indices);
+                println_json_with_length!(total, lines, indices, method);
                 return Ok((now, Some(lines)));
             } else {
-                println_json_with_length!(total);
+                println_json_with_length!(total, method);
                 return Ok((now, None));
             }
         }
