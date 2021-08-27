@@ -174,6 +174,8 @@ impl EventHandler for RecentFilesMessageHandler {
                 log::error!("Failed to handle OnMove event: {:?}", e);
                 write_response(json!({"error": e.to_string(), "id": msg_id }));
             }
+        } else {
+            log::debug!("------------- Can not find lines RecentFilesMessageHandler, lines: {:?}", self.lines.lock());
         }
 
         Ok(())

@@ -80,6 +80,7 @@ impl SessionManager {
     /// Dispatch the session event to the session thread accordingly.
     pub fn send(&self, session_id: SessionId, event: SessionEvent) {
         if let Some(sender) = self.sessions.get(&session_id) {
+          log::debug!("----------------- sending session event: {:?}", event);
             sender.send(event);
         } else {
             error!(

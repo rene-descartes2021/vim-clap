@@ -45,10 +45,9 @@ pub async fn run<T: EventHandler + Clone>(
     Ok(())
 }
 
-pub fn on_create(
-    context: Arc<SessionContext>,
-    sender: tokio::sync::oneshot::Sender<Scale>,
-) -> Result<()> {
+pub async fn on_create(context: Arc<SessionContext>) -> Result<Scale> {
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
     if context.provider_id.as_str() == "blines" {
         let total = crate::utils::count_lines(std::fs::File::open(&context.start_buffer_path)?)?;
 
@@ -61,8 +60,8 @@ pub fn on_create(
         let method = "s:set_total_size";
         utility::println_json_with_length!(total, method);
 
-        sender.send(scale).expect("Failed to send inside on_create");
+        return Ok(scale);
     }
 
-    Ok(())
+    Ok(Scale::Large)
 }

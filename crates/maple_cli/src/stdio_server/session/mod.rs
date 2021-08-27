@@ -7,7 +7,6 @@ use anyhow::Result;
 use crossbeam_channel::Sender;
 use futures::future::AbortHandle;
 use log::debug;
-use parking_lot::Mutex;
 
 use crate::stdio_server::event_handlers::on_init::on_create;
 use crate::stdio_server::types::{Message, ProviderId};
@@ -155,57 +154,39 @@ impl<T: EventHandler + Clone> Session<T> {
                             event.short_display()
                         );
                         match event {
-                            SessionEvent::Terminate => {
-                                self.handle_terminate();
-                                return;
-                            }
                             SessionEvent::Create => {
-                                log::debug!("----------- Receved Create Event");
                                 let context_clone = self.context.clone();
 
-                                let scale: Option<Scale> = tokio::spawn(async move {
-                                    use std::time::Duration;
-                                    use tokio::sync::oneshot;
-                                    use tokio::time::timeout;
-
-                                    let (tx, rx) = oneshot::channel();
-
-                                    tokio::spawn(async move {
-                                        on_create(context_clone, tx).expect("Error in on_create");
-                                    })
+                                match tokio::spawn(async move {
+                                    match tokio::time::timeout(
+                                        std::time::Duration::from_millis(300),
+                                        on_create(context_clone),
+                                    )
                                     .await
-                                    .unwrap();
-
-                                    // TODO: on_init impl
-                                    // https://docs.rs/tokio/1.10.1/tokio/time/fn.timeout.html
-                                    // Wrap the future with a `Timeout` set to expire in 10 milliseconds.
-
-                                    // Wrap the future with a `Timeout` set to expire in 10 milliseconds.
-                                    // if let Err(_) = timeout(Duration::from_millis(300), rx).await {
-                                    // log::debug!("did not receive value within 10 ms");
-                                    // }
-
-                                    match timeout(Duration::from_millis(1), rx).await {
+                                    {
                                         Ok(scale) => Some(scale),
-                                        Err(_) => {
-                                            log::debug!("-------------- did not receive value within 300 ms");
-                                            None
-                                        }
+                                        Err(_) => None, // timeout
                                     }
                                 })
                                 .await
-                                .unwrap()
-                                .unwrap()
-                                .ok();
-
-                                log::debug!("----------- Receved Scale: {:?}", scale);
-                                if let Some(scale) = scale {
-                                    self.source_scale = scale;
+                                {
+                                    Ok(Some(Ok(scale))) => {
+                                        self.source_scale = scale;
+                                    }
+                                    Ok(Some(Err(e))) => {
+                                        log::error!("Error occurrred inside on_create(): {:?}", e);
+                                    }
+                                    Ok(None) => {
+                                        log::debug!("Did not receive value with 300 ms, keep the large scale");
+                                    }
+                                    Err(e) => {
+                                        log::error!("Error occurrred in the Create future: {:?}", e)
+                                    }
                                 }
-                                log::debug!(
-                                    "----------- Now source_scale: {:?}",
-                                    self.source_scale
-                                );
+                            }
+                            SessionEvent::Terminate => {
+                                self.handle_terminate();
+                                return;
                             }
                             SessionEvent::OnMove(msg) => {
                                 if !self.last_on_typed_is_running {
@@ -221,6 +202,8 @@ impl<T: EventHandler + Clone> Session<T> {
                                             e
                                         );
                                     }
+                                } else {
+                                    log::debug!("Ignoring OnMove message since `last_on_typed_is_running` is true");
                                 }
                             }
                             SessionEvent::OnTyped(msg) => {
