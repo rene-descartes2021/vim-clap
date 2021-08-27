@@ -1,7 +1,8 @@
 use std::path::PathBuf;
-use std::sync::{atomic::AtomicBool, Arc, Mutex};
+use std::sync::{atomic::AtomicBool, Arc};
 
 use anyhow::Result;
+use parking_lot::Mutex;
 use serde::Deserialize;
 
 use crate::stdio_server::{types::ProviderId, Message};
