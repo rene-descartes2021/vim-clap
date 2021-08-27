@@ -46,22 +46,17 @@ pub async fn run<T: EventHandler + Clone>(
 }
 
 pub async fn on_create(context: Arc<SessionContext>) -> Result<Scale> {
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-
     if context.provider_id.as_str() == "blines" {
         let total = crate::utils::count_lines(std::fs::File::open(&context.start_buffer_path)?)?;
 
         let scale = if total > 500_000 {
-            Scale::Large
+            Scale::Large(total)
         } else {
-            Scale::Affordable(total)
+            Scale::Small(total)
         };
-
-        let method = "s:set_total_size";
-        utility::println_json_with_length!(total, method);
 
         return Ok(scale);
     }
 
-    Ok(Scale::Large)
+    Ok(Scale::Indefinite)
 }

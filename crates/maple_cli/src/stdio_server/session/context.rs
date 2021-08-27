@@ -13,13 +13,23 @@ const DEFAULT_PREVIEW_WINHEIGHT: u64 = 30;
 
 #[derive(Debug, Clone)]
 pub enum Scale {
-    Large,
-    Affordable(usize),
+    Indefinite,
+    Large(usize),
+    Small(usize),
 }
 
 impl Default for Scale {
     fn default() -> Self {
-        Scale::Large
+        Self::Indefinite
+    }
+}
+
+impl Scale {
+    pub fn total(&self) -> Option<usize> {
+        match self {
+            Self::Large(total) | Self::Small(total) => Some(*total),
+            _ => None,
+        }
     }
 }
 
@@ -86,7 +96,7 @@ impl From<Message> for SessionContext {
             preview_winheight: preview_winheight.unwrap_or(DEFAULT_PREVIEW_WINHEIGHT),
             source_cmd,
             runtimepath,
-            scale: Arc::new(Mutex::new(Scale::Large)),
+            scale: Arc::new(Mutex::new(Scale::Indefinite)),
             is_running: Arc::new(Mutex::new(true.into())),
             source_list: Arc::new(Mutex::new(None)),
         }
