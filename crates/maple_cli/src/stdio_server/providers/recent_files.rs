@@ -198,6 +198,8 @@ impl EventHandler for RecentFilesMessageHandler {
         let mut lines = self.lines.lock();
         *lines = new_lines;
 
+        Self::notify_on_typed_done(sender);
+
         Ok(())
     }
 }

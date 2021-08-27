@@ -7,6 +7,7 @@ use anyhow::Result;
 use crossbeam_channel::Sender;
 use futures::future::AbortHandle;
 use log::debug;
+use parking_lot::Mutex;
 
 use crate::stdio_server::types::{Message, ProviderId};
 
@@ -27,6 +28,14 @@ pub trait EventHandler: Send + Sync + 'static {
         context: Arc<SessionContext>,
         sender: Option<tokio::sync::oneshot::Sender<()>>,
     ) -> Result<()>;
+
+    fn notify_on_typed_done(sender: Option<tokio::sync::oneshot::Sender<()>>) {
+        if let Some(sender) = sender {
+            if let Err(e) = sender.send(()) {
+                log::error!("Failed to send: {:?}", e);
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -70,6 +79,12 @@ impl SessionEvent {
             Self::Terminate => "Terminate".into(),
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct InitialJobResult {
+    pub total: usize,
+    pub lines: Option<Vec<String>>,
 }
 
 impl<T: EventHandler + Clone> Session<T> {
@@ -173,6 +188,7 @@ impl<T: EventHandler + Clone> Session<T> {
 
                                     rx.close();
                                     std::mem::drop(rx);
+                                    self.last_on_typed_rx = None;
                                 }
 
                                 let (tx, rx) = tokio::sync::oneshot::channel();

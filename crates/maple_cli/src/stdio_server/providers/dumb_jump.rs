@@ -212,6 +212,7 @@ impl EventHandler for DumbJumpMessageHandler {
         sender: Option<tokio::sync::oneshot::Sender<()>>,
     ) -> Result<()> {
         self.handle_dumb_jump_message(msg).await;
+        Self::notify_on_typed_done(sender);
         Ok(())
     }
 }

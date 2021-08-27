@@ -43,7 +43,6 @@ impl EventHandler for DefaultEventHandler {
     ) -> Result<()> {
         log::debug!("calling DefaultEventHandler handle_on_typed");
 
-        // TODO: kill last unfinished job and start new one.
         use filter::{dyn_run, FilterContext, Source};
 
         match context.provider_id.as_str() {
@@ -75,11 +74,7 @@ impl EventHandler for DefaultEventHandler {
             }
         }
 
-        if let Some(sender) = sender {
-            if let Err(e) = sender.send(()) {
-                log::error!("Failed to send: {:?}", e);
-            }
-        }
+        Self::notify_on_typed_done(sender);
 
         Ok(())
     }
