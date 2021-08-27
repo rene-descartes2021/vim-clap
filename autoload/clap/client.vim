@@ -10,8 +10,10 @@ let s:handlers = get(s:, 'handlers', {})
 
 function! s:process_filter_result(msg) abort
   if g:clap.display.win_is_valid()
-    call clap#state#process_filter_result(a:msg)
-    call clap#preview#async_open_with_delay()
+    if !has_key(a:msg, 'query') || a:msg.query ==# g:clap.input.get()
+      call clap#state#process_filter_result(a:msg)
+      call clap#preview#async_open_with_delay()
+    endif
   endif
 endfunction
 

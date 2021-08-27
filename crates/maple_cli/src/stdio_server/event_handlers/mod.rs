@@ -42,12 +42,11 @@ impl EventHandler for DefaultEventHandler {
         sender: Option<tokio::sync::oneshot::Sender<()>>,
         stop_recv: Option<tokio::sync::oneshot::Receiver<()>>,
     ) -> Result<()> {
-        log::debug!("calling DefaultEventHandler handle_on_typed");
-
-        use filter::{dyn_run, dyn_run_with_stop_signal, FilterContext, Source};
+        use filter::{dyn_run_with_stop_signal, FilterContext, Source};
 
         match context.provider_id.as_str() {
             "blines" => {
+                log::debug!("calling dyn_run_with_stop_signal");
                 dyn_run_with_stop_signal(
                     &msg.get_query(),
                     Source::List(
@@ -76,6 +75,7 @@ impl EventHandler for DefaultEventHandler {
             }
         }
 
+        log::debug!("--------------- handle_on_typed done");
         Self::notify_on_typed_done(sender);
 
         Ok(())

@@ -175,10 +175,8 @@ impl<T: EventHandler + Clone> Session<T> {
                                 .await
                                 {
                                     Ok(Some(Ok(scale))) => {
-                                        log::debug!("============= receive scale: {:?}", scale);
                                         if let Some(total) = scale.total() {
                                             let method = "s:set_total_size";
-                                            log::debug!("============= Setting total: {}", total);
                                             utility::println_json_with_length!(total, method);
                                         }
                                         self.source_scale = scale;
@@ -225,7 +223,6 @@ impl<T: EventHandler + Clone> Session<T> {
                                     }
 
                                     if let Some(abort_last) = self.last_on_typed_abort_handle {
-                                        log::debug!("=================================== Aborting last OnTyped");
                                         // It may not immediately stop running.
                                         abort_last.abort();
                                     }

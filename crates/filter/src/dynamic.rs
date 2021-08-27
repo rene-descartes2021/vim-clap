@@ -129,6 +129,7 @@ fn try_notify_top_results(
     top_results: &[usize; ITEMS_TO_SHOW],
     buffer: &[FilteredItem],
     last_lines: &[String],
+    query: &str,
 ) -> std::result::Result<(Instant, Option<Vec<String>>), ()> {
     if total % 16 == 0 {
         let now = Instant::now();
@@ -150,10 +151,10 @@ fn try_notify_top_results(
             let method = "s:process_filter_result";
 
             if last_lines != lines.as_slice() {
-                println_json_with_length!(total, lines, indices, method);
+                println_json_with_length!(total, lines, indices, method, query);
                 return Ok((now, Some(lines)));
             } else {
-                println_json_with_length!(total, method);
+                println_json_with_length!(total, method, query);
                 return Ok((now, None));
             }
         }
@@ -181,6 +182,7 @@ fn try_notify_top_results(
 fn dyn_collect_all(
     mut iter: impl Iterator<Item = FilteredItem>,
     icon_painter: &Option<IconPainter>,
+    query: &str,
 ) -> Vec<FilteredItem> {
     let mut buffer = Vec::with_capacity({
         let (low, high) = iter.size_hint();
@@ -216,6 +218,7 @@ fn dyn_collect_all(
             &top_results,
             &buffer,
             &last_lines,
+            query,
         ) {
             past = now;
             if let Some(lines) = new_lines {
@@ -243,6 +246,7 @@ fn dyn_collect_number(
     number: usize,
     icon_painter: &Option<IconPainter>,
     mut stop_recv: Option<tokio::sync::oneshot::Receiver<()>>,
+    query: &str,
 ) -> Option<(usize, Vec<FilteredItem>)> {
     // To not have problems with queues after sorting and truncating the buffer,
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
@@ -283,6 +287,7 @@ fn dyn_collect_number(
             &top_results,
             &buffer,
             &last_lines,
+            query,
         ) {
             past = now;
             if let Some(lines) = new_lines {
@@ -323,26 +328,40 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
 ) -> Result<()> {
     let scoring_matcher =
         matcher::Matcher::with_bonuses(algo.unwrap_or_default(), match_type, bonuses);
+    let note_query = query.clone();
     let query: Query = query.into();
     let scorer = |item: &SourceItem| scoring_matcher.match_query(item, &query);
     if let Some(number) = number {
         if let Some((total, filtered)) = match source {
-            Source::Stdin => {
-                dyn_collect_number(source_iter_stdin!(scorer), number, &icon_painter, None)
-            }
+            Source::Stdin => dyn_collect_number(
+                source_iter_stdin!(scorer),
+                number,
+                &icon_painter,
+                None,
+                note_query,
+            ),
             #[cfg(feature = "enable_dyn")]
-            Source::Exec(exec) => {
-                dyn_collect_number(source_iter_exec!(scorer, exec), number, &icon_painter, None)
-            }
+            Source::Exec(exec) => dyn_collect_number(
+                source_iter_exec!(scorer, exec),
+                number,
+                &icon_painter,
+                None,
+                note_query,
+            ),
             Source::File(fpath) => dyn_collect_number(
                 source_iter_file!(scorer, fpath),
                 number,
                 &icon_painter,
                 None,
+                note_query,
             ),
-            Source::List(list) => {
-                dyn_collect_number(source_iter_list!(scorer, list), number, &icon_painter, None)
-            }
+            Source::List(list) => dyn_collect_number(
+                source_iter_list!(scorer, list),
+                number,
+                &icon_painter,
+                None,
+                note_query,
+            ),
         } {
             let ranked = sort_initial_filtered(filtered);
 
@@ -356,11 +375,17 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
         }
     } else {
         let filtered = match source {
-            Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon_painter),
+            Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon_painter, note_query),
             #[cfg(feature = "enable_dyn")]
-            Source::Exec(exec) => dyn_collect_all(source_iter_exec!(scorer, exec), &icon_painter),
-            Source::File(fpath) => dyn_collect_all(source_iter_file!(scorer, fpath), &icon_painter),
-            Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), &icon_painter),
+            Source::Exec(exec) => {
+                dyn_collect_all(source_iter_exec!(scorer, exec), &icon_painter, note_query)
+            }
+            Source::File(fpath) => {
+                dyn_collect_all(source_iter_file!(scorer, fpath), &icon_painter, note_query)
+            }
+            Source::List(list) => {
+                dyn_collect_all(source_iter_list!(scorer, list), &icon_painter, note_query)
+            }
         };
 
         let ranked = sort_initial_filtered(filtered);
@@ -397,26 +422,41 @@ pub fn dyn_run_with_stop_signal<I: Iterator<Item = SourceItem>>(
 ) -> Result<()> {
     let scoring_matcher =
         matcher::Matcher::with_bonuses(algo.unwrap_or_default(), match_type, bonuses);
+    log::debug!("-------------- query: {:?}", query);
+    let note_query = query.clone();
     let query: Query = query.into();
     let scorer = |item: &SourceItem| scoring_matcher.match_query(item, &query);
     if let Some(number) = number {
         if let Some((total, filtered)) = match source {
-            Source::Stdin => {
-                dyn_collect_number(source_iter_stdin!(scorer), number, &icon_painter, Some(stop_recv))
-            }
+            Source::Stdin => dyn_collect_number(
+                source_iter_stdin!(scorer),
+                number,
+                &icon_painter,
+                Some(stop_recv),
+                note_query,
+            ),
             #[cfg(feature = "enable_dyn")]
-            Source::Exec(exec) => {
-                dyn_collect_number(source_iter_exec!(scorer, exec), number, &icon_painter, Some(stop_recv))
-            }
+            Source::Exec(exec) => dyn_collect_number(
+                source_iter_exec!(scorer, exec),
+                number,
+                &icon_painter,
+                Some(stop_recv),
+                note_query,
+            ),
             Source::File(fpath) => dyn_collect_number(
                 source_iter_file!(scorer, fpath),
                 number,
                 &icon_painter,
                 Some(stop_recv),
+                note_query,
             ),
-            Source::List(list) => {
-                dyn_collect_number(source_iter_list!(scorer, list), number, &icon_painter, Some(stop_recv))
-            }
+            Source::List(list) => dyn_collect_number(
+                source_iter_list!(scorer, list),
+                number,
+                &icon_painter,
+                Some(stop_recv),
+                note_query,
+            ),
         } {
             let ranked = sort_initial_filtered(filtered);
 
@@ -430,11 +470,11 @@ pub fn dyn_run_with_stop_signal<I: Iterator<Item = SourceItem>>(
         }
     } else {
         let filtered = match source {
-            Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon_painter),
+            Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon_painter, note_query),
             #[cfg(feature = "enable_dyn")]
-            Source::Exec(exec) => dyn_collect_all(source_iter_exec!(scorer, exec), &icon_painter),
-            Source::File(fpath) => dyn_collect_all(source_iter_file!(scorer, fpath), &icon_painter),
-            Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), &icon_painter),
+            Source::Exec(exec) => dyn_collect_all(source_iter_exec!(scorer, exec), &icon_painter, note_query),
+            Source::File(fpath) => dyn_collect_all(source_iter_file!(scorer, fpath), &icon_painter, note_query),
+            Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), &icon_painter, note_query),
         };
 
         let ranked = sort_initial_filtered(filtered);
