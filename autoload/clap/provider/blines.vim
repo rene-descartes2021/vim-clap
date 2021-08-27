@@ -41,6 +41,16 @@ if clap#maple#is_available()
   function! s:blines.on_typed() abort
     call clap#client#notify("on_typed", {'query': g:clap.input.get()})
   endfunction
+
+  function! clap#provider#blines#initialize() abort
+    if g:clap.display.initial_size < 100000
+      let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
+      call g:clap.display.set_lines_lazy(clap#provider#blines#format(lines))
+      call g:clap#display_win.shrink_if_undersize()
+      call clap#indicator#set_matches_number(g:clap.display.initial_size)
+      call clap#sign#toggle_cursorline()
+    endif
+  endfunction
 else
   function! s:blines.source() abort
     return clap#provider#blines#format(g:clap.start.get_lines())

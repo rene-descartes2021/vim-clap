@@ -157,7 +157,6 @@ impl EventHandler for RecentFilesMessageHandler {
                 self.lines.lock()
             );
         }
-
         Ok(())
     }
 

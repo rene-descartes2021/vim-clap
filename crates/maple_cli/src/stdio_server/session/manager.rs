@@ -54,7 +54,9 @@ impl SessionManager {
         } else {
             match T::spawn(msg) {
                 Ok(sender) => {
-                    sender.send(SessionEvent::Create).expect("Failed to send Create Event");
+                    sender
+                        .send(SessionEvent::Create)
+                        .expect("Failed to send Create Event");
                     self.sessions
                         .insert(session_id, SessionEventSender::new(sender, session_id));
                 }

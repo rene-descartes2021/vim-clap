@@ -11,10 +11,14 @@ const DEFAULT_DISPLAY_WINWIDTH: u64 = 100;
 
 const DEFAULT_PREVIEW_WINHEIGHT: u64 = 30;
 
+/// This type represents the scale of filtering source.
 #[derive(Debug, Clone)]
 pub enum Scale {
+    /// We do not know the exact total number of source items.
     Indefinite,
+    /// Large scale.
     Large(usize),
+    /// Small scale.
     Small(usize),
 }
 

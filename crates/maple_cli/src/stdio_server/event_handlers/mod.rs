@@ -24,8 +24,6 @@ pub struct DefaultEventHandler;
 #[async_trait::async_trait]
 impl EventHandler for DefaultEventHandler {
     async fn handle_on_move(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
-        log::debug!("[handle_on_move] DefaultEventHandler");
-
         let msg_id = msg.id;
         if let Err(e) = on_move::OnMoveHandler::create(&msg, &context, None).map(|x| x.handle()) {
             log::error!("Failed to handle OnMove event: {:?}", e);

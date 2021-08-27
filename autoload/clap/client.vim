@@ -19,6 +19,9 @@ endfunction
 
 function! s:set_total_size(msg) abort
   let g:clap.display.initial_size = a:msg.total
+  if g:clap.provider.id ==# 'blines'
+    call clap#provider#blines#initialize()
+  endif
 endfunction
 
 function! clap#client#handle(msg) abort

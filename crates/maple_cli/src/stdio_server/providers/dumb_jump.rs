@@ -194,14 +194,8 @@ impl EventHandler for DumbJumpMessageHandler {
                 log::error!("Failed to handle OnMove event: {:?}", e);
                 write_response(json!({"error": e.to_string(), "id": msg_id }));
             }
-            log::debug!("Done OnMove event for dumb_jump");
-        } else {
-            log::debug!(
-                "Can not find the lnum {} given lines: {:?}",
-                lnum - 1,
-                results.lines
-            );
         }
+
         Ok(())
     }
 

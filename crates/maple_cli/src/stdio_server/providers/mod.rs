@@ -17,10 +17,7 @@ pub struct GeneralSession;
 impl NewSession for GeneralSession {
     fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
         let (session, session_sender) = Session::new(msg, DefaultEventHandler);
-        log::debug!("New general session context: {:?}", session.context);
-
         session.start_event_loop()?;
-
         Ok(session_sender)
     }
 }
