@@ -41,29 +41,6 @@ pub async fn handle_recent_files_message(
 
     let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
 
-    if !force_execute {
-        filter::dyn_run(
-            &query,
-            filter::Source::List(
-                recent_files
-                    .entries
-                    .iter()
-                    .map(|entry| entry.fpath.as_str().into()),
-            ),
-            filter::FilterContext::new(
-                None,
-                Some(30),
-                Some(context.display_winwidth as usize),
-                Some(IconPainter::File),
-                filter::matcher::MatchType::Full,
-            ),
-            vec![Bonus::FileName],
-        )
-        .unwrap();
-
-        return Default::default();
-    }
-
     let ranked = if query.is_empty() || force_execute {
         // Sort the initial list according to the cwd.
         //
@@ -175,7 +152,10 @@ impl EventHandler for RecentFilesMessageHandler {
                 write_response(json!({"error": e.to_string(), "id": msg_id }));
             }
         } else {
-            log::debug!("------------- Can not find lines RecentFilesMessageHandler, lines: {:?}", self.lines.lock());
+            log::debug!(
+                "------------- Can not find lines RecentFilesMessageHandler, lines: {:?}",
+                self.lines.lock()
+            );
         }
 
         Ok(())
