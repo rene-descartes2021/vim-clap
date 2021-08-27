@@ -210,6 +210,7 @@ impl EventHandler for DumbJumpMessageHandler {
         msg: Message,
         _context: Arc<SessionContext>,
         sender: Option<tokio::sync::oneshot::Sender<()>>,
+        stop_recv: Option<tokio::sync::oneshot::Receiver<()>>,
     ) -> Result<()> {
         self.handle_dumb_jump_message(msg).await;
         Self::notify_on_typed_done(sender);

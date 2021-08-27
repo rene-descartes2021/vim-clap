@@ -109,6 +109,15 @@ function! clap#client#notify(method, params) abort
         \ }))
 endfunction
 
+let s:notify_delay = 200
+let s:notify_timer = -1
+function! clap#client#notify_with_delay(method, params) abort
+  if s:notify_timer != -1
+    call timer_stop(s:notify_timer)
+  endif
+  let s:notify_timer = timer_start(s:notify_delay, { -> clap#client#notify(a:method, a:params)})
+endfunction
+
 function! clap#client#notify_recent_file() abort
   if &buftype ==# 'nofile'
     return

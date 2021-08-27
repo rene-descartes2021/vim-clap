@@ -40,14 +40,15 @@ impl EventHandler for DefaultEventHandler {
         msg: Message,
         context: Arc<SessionContext>,
         sender: Option<tokio::sync::oneshot::Sender<()>>,
+        stop_recv: Option<tokio::sync::oneshot::Receiver<()>>,
     ) -> Result<()> {
         log::debug!("calling DefaultEventHandler handle_on_typed");
 
-        use filter::{dyn_run, FilterContext, Source};
+        use filter::{dyn_run, dyn_run_with_stop_signal, FilterContext, Source};
 
         match context.provider_id.as_str() {
             "blines" => {
-                dyn_run(
+                dyn_run_with_stop_signal(
                     &msg.get_query(),
                     Source::List(
                         std::fs::read_to_string(&context.start_buffer_path)?
@@ -64,6 +65,7 @@ impl EventHandler for DefaultEventHandler {
                         filter::matcher::MatchType::Full,
                     ),
                     Default::default(),
+                    stop_recv.unwrap(),
                 )?;
             }
             _ => {

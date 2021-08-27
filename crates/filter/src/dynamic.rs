@@ -242,7 +242,8 @@ fn dyn_collect_number(
     mut iter: impl Iterator<Item = FilteredItem>,
     number: usize,
     icon_painter: &Option<IconPainter>,
-) -> (usize, Vec<FilteredItem>) {
+    mut stop_recv: Option<tokio::sync::oneshot::Receiver<()>>,
+) -> Option<(usize, Vec<FilteredItem>)> {
     // To not have problems with queues after sorting and truncating the buffer,
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
     let mut buffer = Vec::with_capacity(2 * std::cmp::max(ITEMS_TO_SHOW, number));
@@ -250,7 +251,7 @@ fn dyn_collect_number(
     let top_selected_result = select_top_items_to_show(&mut buffer, &mut iter);
 
     let (mut total, mut top_scores, mut top_results) = match top_selected_result {
-        Ok(t) => return (t, buffer),
+        Ok(t) => return Some((t, buffer)),
         Err((t, top_scores, top_results)) => (t, top_scores, top_results),
     };
 
@@ -259,7 +260,14 @@ fn dyn_collect_number(
     // Now we have the full queue and can just pair `.pop_back()` with
     // `.insert()` to keep the queue with best results the same size.
     let mut past = std::time::Instant::now();
-    iter.for_each(|filtered_item| {
+    iter.try_for_each(|filtered_item| {
+        if let Some(ref mut stop_recv) = stop_recv {
+            if let Ok(()) = stop_recv.try_recv() {
+                log::debug!("============== Received stop signal");
+                return None;
+            }
+        }
+
         let score = filtered_item.score;
         let idx = find_best_score_idx(&top_scores, score);
 
@@ -293,9 +301,11 @@ fn dyn_collect_number(
             let half = buffer.len() / 2;
             buffer.truncate(half);
         }
+
+        Some(())
     });
 
-    (total, buffer)
+    Some((total, buffer))
 }
 
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
@@ -316,29 +326,108 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     let query: Query = query.into();
     let scorer = |item: &SourceItem| scoring_matcher.match_query(item, &query);
     if let Some(number) = number {
-        let (total, filtered) = match source {
-            Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, &icon_painter),
+        if let Some((total, filtered)) = match source {
+            Source::Stdin => {
+                dyn_collect_number(source_iter_stdin!(scorer), number, &icon_painter, None)
+            }
             #[cfg(feature = "enable_dyn")]
             Source::Exec(exec) => {
-                dyn_collect_number(source_iter_exec!(scorer, exec), number, &icon_painter)
+                dyn_collect_number(source_iter_exec!(scorer, exec), number, &icon_painter, None)
             }
-            Source::File(fpath) => {
-                dyn_collect_number(source_iter_file!(scorer, fpath), number, &icon_painter)
-            }
+            Source::File(fpath) => dyn_collect_number(
+                source_iter_file!(scorer, fpath),
+                number,
+                &icon_painter,
+                None,
+            ),
             Source::List(list) => {
-                dyn_collect_number(source_iter_list!(scorer, list), number, &icon_painter)
+                dyn_collect_number(source_iter_list!(scorer, list), number, &icon_painter, None)
             }
+        } {
+            let ranked = sort_initial_filtered(filtered);
+
+            printer::print_dyn_filter_results(
+                ranked,
+                total,
+                number,
+                winwidth.unwrap_or(100),
+                icon_painter,
+            );
+        }
+    } else {
+        let filtered = match source {
+            Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon_painter),
+            #[cfg(feature = "enable_dyn")]
+            Source::Exec(exec) => dyn_collect_all(source_iter_exec!(scorer, exec), &icon_painter),
+            Source::File(fpath) => dyn_collect_all(source_iter_file!(scorer, fpath), &icon_painter),
+            Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), &icon_painter),
         };
 
         let ranked = sort_initial_filtered(filtered);
 
-        printer::print_dyn_filter_results(
-            ranked,
-            total,
-            number,
-            winwidth.unwrap_or(100),
-            icon_painter,
-        );
+        for FilteredItem {
+            source_item,
+            match_indices,
+            display_text,
+            ..
+        } in ranked.into_iter()
+        {
+            let text = display_text.unwrap_or_else(|| source_item.display_text().to_owned());
+            let indices = match_indices;
+            println_json!(text, indices);
+        }
+    }
+
+    Ok(())
+}
+
+/// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
+pub fn dyn_run_with_stop_signal<I: Iterator<Item = SourceItem>>(
+    query: &str,
+    source: Source<I>,
+    FilterContext {
+        algo,
+        number,
+        winwidth,
+        icon_painter,
+        match_type,
+    }: FilterContext,
+    bonuses: Vec<Bonus>,
+    stop_recv: tokio::sync::oneshot::Receiver<()>,
+) -> Result<()> {
+    let scoring_matcher =
+        matcher::Matcher::with_bonuses(algo.unwrap_or_default(), match_type, bonuses);
+    let query: Query = query.into();
+    let scorer = |item: &SourceItem| scoring_matcher.match_query(item, &query);
+    if let Some(number) = number {
+        if let Some((total, filtered)) = match source {
+            Source::Stdin => {
+                dyn_collect_number(source_iter_stdin!(scorer), number, &icon_painter, Some(stop_recv))
+            }
+            #[cfg(feature = "enable_dyn")]
+            Source::Exec(exec) => {
+                dyn_collect_number(source_iter_exec!(scorer, exec), number, &icon_painter, Some(stop_recv))
+            }
+            Source::File(fpath) => dyn_collect_number(
+                source_iter_file!(scorer, fpath),
+                number,
+                &icon_painter,
+                Some(stop_recv),
+            ),
+            Source::List(list) => {
+                dyn_collect_number(source_iter_list!(scorer, list), number, &icon_painter, Some(stop_recv))
+            }
+        } {
+            let ranked = sort_initial_filtered(filtered);
+
+            printer::print_dyn_filter_results(
+                ranked,
+                total,
+                number,
+                winwidth.unwrap_or(100),
+                icon_painter,
+            );
+        }
     } else {
         let filtered = match source {
             Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon_painter),

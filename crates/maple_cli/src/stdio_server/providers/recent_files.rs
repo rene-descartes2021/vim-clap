@@ -166,6 +166,7 @@ impl EventHandler for RecentFilesMessageHandler {
         msg: Message,
         context: Arc<SessionContext>,
         sender: Option<tokio::sync::oneshot::Sender<()>>,
+        stop_recv: Option<tokio::sync::oneshot::Receiver<()>>,
     ) -> Result<()> {
         let new_lines = tokio::spawn(handle_recent_files_message(msg, context, false))
             .await

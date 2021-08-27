@@ -118,6 +118,7 @@ impl EventHandler for FilerMessageHandler {
         msg: Message,
         _context: Arc<SessionContext>,
         sender: Option<tokio::sync::oneshot::Sender<()>>,
+        _stop_recv: Option<tokio::sync::oneshot::Receiver<()>>,
     ) -> Result<()> {
         handle_filer_message(msg);
         Ok(())

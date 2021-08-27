@@ -15,7 +15,7 @@ use rayon::prelude::*;
 use icon::IconPainter;
 use matcher::{Bonus, FuzzyAlgorithm, MatchType, Matcher};
 
-pub use self::dynamic::{dyn_run, ITEMS_TO_SHOW};
+pub use self::dynamic::{dyn_run, dyn_run_with_stop_signal, ITEMS_TO_SHOW};
 pub use self::source::Source;
 pub use matcher;
 #[cfg(feature = "enable_dyn")]
