@@ -36,6 +36,7 @@ pub struct Session<T> {
     /// Each Session can have its own message processing logic.
     pub event_handler: T,
     pub event_recv: crossbeam_channel::Receiver<SessionEvent>,
+    pub last_on_typed_is_running: bool,
     pub last_abort_handle: Option<AbortHandle>,
     pub last_rx: Option<tokio::sync::oneshot::Receiver<()>>,
 }
@@ -47,6 +48,7 @@ impl<T: Clone> Clone for Session<T> {
             context: self.context.clone(),
             event_handler: self.event_handler.clone(),
             event_recv: self.event_recv.clone(),
+            last_on_typed_is_running: self.last_on_typed_is_running.clone(),
             last_abort_handle: self.last_abort_handle.clone(),
             last_rx: None,
         }
@@ -79,6 +81,7 @@ impl<T: EventHandler + Clone> Session<T> {
             context: Arc::new(msg.into()),
             event_handler,
             event_recv: session_receiver,
+            last_on_typed_is_running: false,
             last_abort_handle: None,
             last_rx: None,
         };
@@ -137,12 +140,18 @@ impl<T: EventHandler + Clone> Session<T> {
                                 return;
                             }
                             SessionEvent::OnMove(msg) => {
-                                if let Err(e) = self
-                                    .event_handler
-                                    .handle_on_move(msg, self.context.clone())
-                                    .await
-                                {
-                                    debug!("Error occurrred when handling OnMove event: {:?}", e);
+                                // TODO: if the on_typed is still running, postpone processing the OnMoved message
+                                if !self.last_on_typed_is_running {
+                                    if let Err(e) = self
+                                        .event_handler
+                                        .handle_on_move(msg, self.context.clone())
+                                        .await
+                                    {
+                                        debug!(
+                                            "Error occurrred when handling OnMove event: {:?}",
+                                            e
+                                        );
+                                    }
                                 }
                             }
                             SessionEvent::OnTyped(msg) => {
@@ -152,7 +161,7 @@ impl<T: EventHandler + Clone> Session<T> {
                                     if let Ok(()) = rx.try_recv() {
                                         log::debug!("Received a message from last_rx");
                                     } else {
-                                        log::debug!("Received no message from last_rx");
+                                        log::debug!("=================================== Received no message from last_rx, last job is still running");
                                         // Kill the last job if it's still running.
                                         if let Some(abort_last) = self.last_abort_handle {
                                             abort_last.abort();
@@ -182,8 +191,20 @@ impl<T: EventHandler + Clone> Session<T> {
                                 });
 
                                 self.last_abort_handle = Some(handle);
+                                self.last_on_typed_is_running = true;
 
-                                tokio::spawn(task).await;
+                                match tokio::spawn(task).await {
+                                    Ok(_) => {
+                                        log::debug!(
+                                            "=============== Last OnTyped job is done successfully"
+                                        );
+                                        self.last_on_typed_is_running = false;
+                                    }
+                                    Err(e) => {
+                                        log::debug!("=============== Last OnTyped job is done with error: {:?}", e);
+                                        self.last_on_typed_is_running = false;
+                                    }
+                                }
                             }
                         }
                     }

@@ -93,7 +93,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
     let mut manager = SessionManager::default();
     for msg in rx.iter() {
         if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
-            debug!("==> stdio message(in): {:?}", msg);
+            // debug!("==> stdio message(in): {:?}", msg);
             match &msg.method[..] {
                 "initialize_global_env" => initialize_global(msg), // should be called only once.
                 "init_ext_map" => message_handlers::parse_filetypedetect(msg),
