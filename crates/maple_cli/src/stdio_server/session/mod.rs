@@ -213,6 +213,7 @@ impl<T: EventHandler + Clone> Session<T> {
                                 }
                             }
                             SessionEvent::OnTyped(msg) => {
+                                // TODO: really kill the last OnTyped
                                 if let Some(mut rx) = self.last_on_typed_rx {
                                     log::debug!("Checking last_on_typed_rx");
                                     // Last OnTyped filtering is done.
