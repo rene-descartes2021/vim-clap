@@ -37,8 +37,8 @@ pub struct Session<T> {
     pub event_handler: T,
     pub event_recv: crossbeam_channel::Receiver<SessionEvent>,
     pub last_on_typed_is_running: bool,
-    pub last_abort_handle: Option<AbortHandle>,
-    pub last_rx: Option<tokio::sync::oneshot::Receiver<()>>,
+    pub last_on_typed_abort_handle: Option<AbortHandle>,
+    pub last_on_typed_rx: Option<tokio::sync::oneshot::Receiver<()>>,
 }
 
 impl<T: Clone> Clone for Session<T> {
@@ -49,8 +49,8 @@ impl<T: Clone> Clone for Session<T> {
             event_handler: self.event_handler.clone(),
             event_recv: self.event_recv.clone(),
             last_on_typed_is_running: self.last_on_typed_is_running.clone(),
-            last_abort_handle: self.last_abort_handle.clone(),
-            last_rx: None,
+            last_on_typed_abort_handle: self.last_on_typed_abort_handle.clone(),
+            last_on_typed_rx: None,
         }
     }
 }
@@ -82,8 +82,8 @@ impl<T: EventHandler + Clone> Session<T> {
             event_handler,
             event_recv: session_receiver,
             last_on_typed_is_running: false,
-            last_abort_handle: None,
-            last_rx: None,
+            last_on_typed_abort_handle: None,
+            last_on_typed_rx: None,
         };
 
         (session, session_sender)
@@ -155,45 +155,47 @@ impl<T: EventHandler + Clone> Session<T> {
                                 }
                             }
                             SessionEvent::OnTyped(msg) => {
-                                if let Some(mut rx) = self.last_rx {
-                                    log::debug!("Checking last_rx");
+                                if let Some(mut rx) = self.last_on_typed_rx {
+                                    log::debug!("Checking last_on_typed_rx");
                                     // Last OnTyped filtering is done.
                                     if let Ok(()) = rx.try_recv() {
-                                        log::debug!("Received a message from last_rx");
+                                        log::debug!("Received a message from last_on_typed_rx");
                                     } else {
-                                        log::debug!("=================================== Received no message from last_rx, last job is still running");
+                                        log::debug!("=================================== Received no message from last_on_typed_rx, last job is still running");
                                         // Kill the last job if it's still running.
-                                        if let Some(abort_last) = self.last_abort_handle {
+                                        if let Some(abort_last) = self.last_on_typed_abort_handle {
                                             abort_last.abort();
                                         }
                                     }
 
                                     rx.close();
+                                    std::mem::drop(rx);
                                 }
 
                                 let (tx, rx) = tokio::sync::oneshot::channel();
 
-                                self.last_rx = Some(rx);
+                                self.last_on_typed_rx = Some(rx);
 
                                 let mut event_handler_clone = self.event_handler.clone();
                                 let context_clone = self.context.clone();
 
-                                let (task, handle) = futures::future::abortable(async move {
-                                    if let Err(e) = event_handler_clone
-                                        .handle_on_typed(msg, context_clone, Some(tx))
-                                        .await
-                                    {
-                                        debug!(
-                                            "Error occurrred when handling OnTyped event: {:?}",
-                                            e
-                                        );
-                                    }
-                                });
+                                let (on_typed_task, handle) =
+                                    futures::future::abortable(async move {
+                                        if let Err(e) = event_handler_clone
+                                            .handle_on_typed(msg, context_clone, Some(tx))
+                                            .await
+                                        {
+                                            debug!(
+                                                "Error occurrred when handling OnTyped event: {:?}",
+                                                e
+                                            );
+                                        }
+                                    });
 
-                                self.last_abort_handle = Some(handle);
                                 self.last_on_typed_is_running = true;
+                                self.last_on_typed_abort_handle = Some(handle);
 
-                                match tokio::spawn(task).await {
+                                match tokio::spawn(on_typed_task).await {
                                     Ok(_) => {
                                         log::debug!(
                                             "=============== Last OnTyped job is done successfully"
