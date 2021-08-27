@@ -9,9 +9,10 @@ use futures::future::AbortHandle;
 use log::debug;
 use parking_lot::Mutex;
 
+use crate::stdio_server::event_handlers::on_init::on_create;
 use crate::stdio_server::types::{Message, ProviderId};
 
-pub use self::context::SessionContext;
+pub use self::context::{Scale, SessionContext};
 pub use self::manager::{NewSession, SessionManager};
 
 pub type SessionId = u64;
@@ -45,6 +46,7 @@ pub struct Session<T> {
     /// Each Session can have its own message processing logic.
     pub event_handler: T,
     pub event_recv: crossbeam_channel::Receiver<SessionEvent>,
+    pub source_scale: Scale,
     pub last_on_typed_is_running: bool,
     pub last_on_typed_abort_handle: Option<AbortHandle>,
     pub last_on_typed_rx: Option<tokio::sync::oneshot::Receiver<()>>,
@@ -57,6 +59,7 @@ impl<T: Clone> Clone for Session<T> {
             context: self.context.clone(),
             event_handler: self.event_handler.clone(),
             event_recv: self.event_recv.clone(),
+            source_scale: self.source_scale.clone(),
             last_on_typed_is_running: self.last_on_typed_is_running.clone(),
             last_on_typed_abort_handle: self.last_on_typed_abort_handle.clone(),
             last_on_typed_rx: None,
@@ -68,6 +71,7 @@ impl<T: Clone> Clone for Session<T> {
 pub enum SessionEvent {
     OnTyped(Message),
     OnMove(Message),
+    Create,
     Terminate,
 }
 
@@ -76,6 +80,7 @@ impl SessionEvent {
         match self {
             Self::OnTyped(msg) => format!("OnTyped, msg id: {}", msg.id),
             Self::OnMove(msg) => format!("OnMove, msg id: {}", msg.id),
+            Self::Create => "Create".into(),
             Self::Terminate => "Terminate".into(),
         }
     }
@@ -96,6 +101,7 @@ impl<T: EventHandler + Clone> Session<T> {
             context: Arc::new(msg.into()),
             event_handler,
             event_recv: session_receiver,
+            source_scale: Scale::Large,
             last_on_typed_is_running: false,
             last_on_typed_abort_handle: None,
             last_on_typed_rx: None,
@@ -153,13 +159,58 @@ impl<T: EventHandler + Clone> Session<T> {
                                 self.handle_terminate();
                                 return;
                             }
-                            SessionEvent::OnMove(msg) => {
+                            SessionEvent::Create => {
+                                log::debug!("----------- Receved Create Event");
+                                let context_clone = self.context.clone();
+
+                                let scale: Option<Scale> = tokio::spawn(async move {
+                                    use std::time::Duration;
+                                    use tokio::sync::oneshot;
+                                    use tokio::time::timeout;
+
+                                    let (tx, rx) = oneshot::channel();
+
+                                    tokio::spawn(async move {
+                                        on_create(context_clone, tx).expect("Error in on_create");
+                                    })
+                                    .await
+                                    .unwrap();
+
+                                    // TODO: on_init impl
+                                    // https://docs.rs/tokio/1.10.1/tokio/time/fn.timeout.html
+                                    // Wrap the future with a `Timeout` set to expire in 10 milliseconds.
+
+                                    // Wrap the future with a `Timeout` set to expire in 10 milliseconds.
+                                    // if let Err(_) = timeout(Duration::from_millis(300), rx).await {
+                                    // log::debug!("did not receive value within 10 ms");
+                                    // }
+
+                                    match timeout(Duration::from_millis(1), rx).await {
+                                        Ok(scale) => Some(scale),
+                                        Err(_) => {
+                                            log::debug!("-------------- did not receive value within 300 ms");
+                                            None
+                                        }
+                                    }
+                                })
+                                .await
+                                .unwrap()
+                                .unwrap()
+                                .ok();
+
+                                log::debug!("----------- Receved Scale: {:?}", scale);
+                                if let Some(scale) = scale {
+                                    self.source_scale = scale;
+                                }
                                 log::debug!(
-                                    "----------- self.last_on_typed_is_running: {:?}",
-                                    self.last_on_typed_is_running
+                                    "----------- Now source_scale: {:?}",
+                                    self.source_scale
                                 );
-                                // TODO: if the on_typed is still running, postpone processing the OnMoved message
+                            }
+                            SessionEvent::OnMove(msg) => {
                                 if !self.last_on_typed_is_running {
+                                    // TODO: in case of the overwhelm of OnTyped messages, a debounce
+                                    // should be added.
                                     if let Err(e) = self
                                         .event_handler
                                         .handle_on_move(msg, self.context.clone())

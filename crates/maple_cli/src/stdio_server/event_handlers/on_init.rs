@@ -1,9 +1,12 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use serde_json::json;
 
 use crate::process::AsyncCommand;
+use crate::stdio_server::session::SessionContext;
 use crate::stdio_server::{
-    session::{EventHandler, Session},
+    session::{EventHandler, Scale, Session},
     write_response,
 };
 
@@ -37,6 +40,28 @@ pub async fn run<T: EventHandler + Clone>(
 
         let mut session = session;
         session.set_source_list(lines);
+    }
+
+    Ok(())
+}
+
+pub fn on_create(
+    context: Arc<SessionContext>,
+    sender: tokio::sync::oneshot::Sender<Scale>,
+) -> Result<()> {
+    if context.provider_id.as_str() == "blines" {
+        let total = crate::utils::count_lines(std::fs::File::open(&context.start_buffer_path)?)?;
+
+        let scale = if total > 500_000 {
+            Scale::Large
+        } else {
+            Scale::Affordable(total)
+        };
+
+        let method = "s:set_total_size";
+        utility::println_json_with_length!(total, method);
+
+        sender.send(scale).expect("Failed to send inside on_create");
     }
 
     Ok(())

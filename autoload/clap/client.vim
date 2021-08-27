@@ -16,6 +16,7 @@ function! s:process_filter_result(msg) abort
 endfunction
 
 function! s:set_total_size(msg) abort
+  let g:clap.display.initial_size = a:msg.total
 endfunction
 
 function! clap#client#handle(msg) abort
