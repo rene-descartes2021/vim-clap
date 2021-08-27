@@ -140,6 +140,10 @@ impl<T: EventHandler + Clone> Session<T> {
                                 return;
                             }
                             SessionEvent::OnMove(msg) => {
+                                log::debug!(
+                                    "----------- self.last_on_typed_is_running: {:?}",
+                                    self.last_on_typed_is_running
+                                );
                                 // TODO: if the on_typed is still running, postpone processing the OnMoved message
                                 if !self.last_on_typed_is_running {
                                     if let Err(e) = self

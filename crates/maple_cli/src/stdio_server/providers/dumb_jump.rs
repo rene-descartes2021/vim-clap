@@ -5,6 +5,7 @@ use anyhow::Result;
 use crossbeam_channel::Sender;
 use itertools::Itertools;
 use log::error;
+use parking_lot::Mutex;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -47,7 +48,7 @@ impl DumbJumpMessageHandler {
     async fn handle_dumb_jump_message(&mut self, msg: Message) {
         // TODO: try refilter
 
-        let results = tokio::spawn(handle_dumb_jump_message(msg, false))
+        let new_results = tokio::spawn(handle_dumb_jump_message(msg, false))
             .await
             .unwrap_or_else(|e| {
                 log::error!(
@@ -57,7 +58,8 @@ impl DumbJumpMessageHandler {
                 Default::default()
             });
 
-        self.results = results;
+        let mut results = self.results.lock();
+        *results = new_results;
     }
 }
 
@@ -170,24 +172,35 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
 #[derive(Debug, Clone, Default)]
 pub struct DumbJumpMessageHandler {
     /// Last/Latest search results.
-    results: SearchResults,
+    results: Arc<Mutex<SearchResults>>,
 }
 
 #[async_trait::async_trait]
 impl EventHandler for DumbJumpMessageHandler {
     async fn handle_on_move(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
+        log::debug!("Receive OnMove event for dumb_jump");
         let msg_id = msg.id;
 
         let lnum = msg.get_u64("lnum").expect("lnum exists");
 
+        let results = self.results.lock();
+
         // lnum is 1-indexed
-        if let Some(curline) = self.results.lines.get((lnum - 1) as usize) {
+        if let Some(curline) = results.lines.get((lnum - 1) as usize) {
+            log::debug!("Creating OnMove event for dumb_jump");
             if let Err(e) =
                 OnMoveHandler::create(&msg, &context, Some(curline.into())).map(|x| x.handle())
             {
                 log::error!("Failed to handle OnMove event: {:?}", e);
                 write_response(json!({"error": e.to_string(), "id": msg_id }));
             }
+            log::debug!("Done OnMove event for dumb_jump");
+        } else {
+            log::debug!(
+                "Can not find the lnum {} given lines: {:?}",
+                lnum - 1,
+                results.lines
+            );
         }
         Ok(())
     }

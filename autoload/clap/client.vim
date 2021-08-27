@@ -15,6 +15,9 @@ function! s:process_filter_result(msg) abort
   endif
 endfunction
 
+function! s:set_total_size(msg) abort
+endfunction
+
 function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
 
