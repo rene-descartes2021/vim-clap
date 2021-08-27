@@ -179,7 +179,12 @@ impl EventHandler for RecentFilesMessageHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_typed(
+        &mut self,
+        msg: Message,
+        context: Arc<SessionContext>,
+        sender: Option<tokio::sync::oneshot::Sender<()>>,
+    ) -> Result<()> {
         let new_lines = tokio::spawn(handle_recent_files_message(msg, context, false))
             .await
             .unwrap_or_else(|e| {

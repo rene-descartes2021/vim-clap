@@ -33,7 +33,14 @@ impl EventHandler for DefaultEventHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_typed(
+        &mut self,
+        msg: Message,
+        context: Arc<SessionContext>,
+        sender: Option<tokio::sync::oneshot::Sender<()>>,
+    ) -> Result<()> {
+        log::debug!("calling DefaultEventHandler handle_on_typed");
+
         // TODO: kill last unfinished job and start new one.
         use filter::{dyn_run, FilterContext, Source};
 
@@ -63,6 +70,12 @@ impl EventHandler for DefaultEventHandler {
                     "Unknown provider_id: {} in general handle_on_typed",
                     context.provider_id
                 ));
+            }
+        }
+
+        if let Some(sender) = sender {
+            if let Err(e) = sender.send(()) {
+                log::error!("Failed to send: {:?}", e);
             }
         }
 

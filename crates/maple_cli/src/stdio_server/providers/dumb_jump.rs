@@ -192,7 +192,12 @@ impl EventHandler for DumbJumpMessageHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(&mut self, msg: Message, _context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_typed(
+        &mut self,
+        msg: Message,
+        _context: Arc<SessionContext>,
+        sender: Option<tokio::sync::oneshot::Sender<()>>,
+    ) -> Result<()> {
         self.handle_dumb_jump_message(msg).await;
         Ok(())
     }

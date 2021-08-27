@@ -21,18 +21,36 @@ pub trait EventHandler: Send + Sync + 'static {
     async fn handle_on_move(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()>;
 
     /// Use the mutable self so that we can cache some info inside the handler.
-    async fn handle_on_typed(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()>;
+    async fn handle_on_typed(
+        &mut self,
+        msg: Message,
+        context: Arc<SessionContext>,
+        sender: Option<tokio::sync::oneshot::Sender<()>>,
+    ) -> Result<()>;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Session<T> {
     pub session_id: u64,
     pub context: Arc<SessionContext>,
     /// Each Session can have its own message processing logic.
     pub event_handler: T,
     pub event_recv: crossbeam_channel::Receiver<SessionEvent>,
-    pub last_on_typed_running: bool,
     pub last_abort_handle: Option<AbortHandle>,
+    pub last_rx: Option<tokio::sync::oneshot::Receiver<()>>,
+}
+
+impl<T: Clone> Clone for Session<T> {
+    fn clone(&self) -> Self {
+        Self {
+            session_id: self.session_id,
+            context: self.context.clone(),
+            event_handler: self.event_handler.clone(),
+            event_recv: self.event_recv.clone(),
+            last_abort_handle: self.last_abort_handle.clone(),
+            last_rx: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -61,8 +79,8 @@ impl<T: EventHandler + Clone> Session<T> {
             context: Arc::new(msg.into()),
             event_handler,
             event_recv: session_receiver,
-            last_on_typed_running: false,
             last_abort_handle: None,
+            last_rx: None,
         };
 
         (session, session_sender)
@@ -128,13 +146,32 @@ impl<T: EventHandler + Clone> Session<T> {
                                 }
                             }
                             SessionEvent::OnTyped(msg) => {
-                                self.last_on_typed_running = true;
+                                if let Some(mut rx) = self.last_rx {
+                                    log::debug!("Checking last_rx");
+                                    // Last OnTyped filtering is done.
+                                    if let Ok(()) = rx.try_recv() {
+                                        log::debug!("Received a message from last_rx");
+                                    } else {
+                                        log::debug!("Received no message from last_rx");
+                                        // Kill the last job if it's still running.
+                                        if let Some(abort_last) = self.last_abort_handle {
+                                            abort_last.abort();
+                                        }
+                                    }
+
+                                    rx.close();
+                                }
+
+                                let (tx, rx) = tokio::sync::oneshot::channel();
+
+                                self.last_rx = Some(rx);
 
                                 let mut event_handler_clone = self.event_handler.clone();
                                 let context_clone = self.context.clone();
+
                                 let (task, handle) = futures::future::abortable(async move {
                                     if let Err(e) = event_handler_clone
-                                        .handle_on_typed(msg, context_clone)
+                                        .handle_on_typed(msg, context_clone, Some(tx))
                                         .await
                                     {
                                         debug!(
@@ -143,27 +180,10 @@ impl<T: EventHandler + Clone> Session<T> {
                                         );
                                     }
                                 });
-                                tokio::spawn(task);
 
                                 self.last_abort_handle = Some(handle);
 
-                                // self.handl
-
-                                // if self.last_on_typed_running {
-
-                                // handle.abort();
-
-                                // }
-
-                                // if let Err(e) = self
-                                // .event_handler
-                                // .handle_on_typed(msg, self.context.clone())
-                                // .await
-                                // {
-                                // debug!("Error occurrred when handling OnTyped event: {:?}", e);
-                                // } else {
-                                // self.last_on_typed_running = false;
-                                // }
+                                tokio::spawn(task).await;
                             }
                         }
                     }
