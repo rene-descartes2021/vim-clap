@@ -15,11 +15,11 @@ use crate::stdio_server::{
     write_response, Message,
 };
 
-pub async fn handle_recent_files_message(
+pub async fn handle_recent_files_message<'a>(
     msg: Message,
     context: Arc<SessionContext>,
     force_execute: bool,
-) -> Vec<FilteredItem> {
+) -> Vec<FilteredItem<'a>> {
     let msg_id = msg.id;
 
     let cwd = context.cwd.to_string_lossy().to_string();
@@ -126,12 +126,12 @@ pub async fn handle_recent_files_message(
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct RecentFilesMessageHandler {
-    lines: Arc<Mutex<Vec<FilteredItem>>>,
+pub struct RecentFilesMessageHandler<'a> {
+    lines: Arc<Mutex<Vec<FilteredItem<'a>>>>,
 }
 
 #[async_trait::async_trait]
-impl EventHandler for RecentFilesMessageHandler {
+impl EventHandler for RecentFilesMessageHandler<'static> {
     async fn handle_on_move(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
 
@@ -141,7 +141,7 @@ impl EventHandler for RecentFilesMessageHandler {
             .lines
             .lock()
             .get((lnum - 1) as usize)
-            .map(|r| r.source_item.raw.as_str())
+            .map(|r| r.source_item.raw)
         {
             if let Err(e) =
                 OnMoveHandler::create(&msg, &context, Some(curline.into())).map(|x| x.handle())

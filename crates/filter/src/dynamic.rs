@@ -70,9 +70,9 @@ type SelectedTopItemsInfo = (usize, [Score; ITEMS_TO_SHOW], [usize; ITEMS_TO_SHO
 /// Returns Ok if all items in the iterator has been processed.
 ///
 /// First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
-fn select_top_items_to_show(
-    buffer: &mut Vec<FilteredItem>,
-    iter: &mut impl Iterator<Item = FilteredItem>,
+fn select_top_items_to_show<'a>(
+    buffer: &mut Vec<FilteredItem<'a>>,
+    iter: &mut impl Iterator<Item = FilteredItem<'a>>,
 ) -> std::result::Result<usize, SelectedTopItemsInfo> {
     let mut top_scores: [Score; ITEMS_TO_SHOW] = [Score::min_value(); ITEMS_TO_SHOW];
     let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
@@ -196,9 +196,9 @@ impl Watcher {
 /// VecDeque for this iterator.
 ///
 /// So, this particular function won't work in parallel context at all.
-fn dyn_collect_all(
-    mut iter: impl Iterator<Item = FilteredItem>,
-    icon_painter: &Option<IconPainter>,
+fn dyn_collect_all<'a>(
+    mut iter: impl Iterator<Item = FilteredItem<'a>>,
+    icon_painter: &'a Option<IconPainter>,
 ) -> Vec<FilteredItem> {
     let mut buffer = Vec::with_capacity({
         let (low, high) = iter.size_hint();
@@ -242,10 +242,10 @@ fn dyn_collect_all(
 // Even though the current implementation isn't the most effective thing to do it,
 // I think, it's just good enough. And should be more effective than full
 // `collect()` into Vec on big numbers of iterations.
-fn dyn_collect_number(
-    mut iter: impl Iterator<Item = FilteredItem>,
+fn dyn_collect_number<'a>(
+    mut iter: impl Iterator<Item = FilteredItem<'a>>,
     number: usize,
-    icon_painter: &Option<IconPainter>,
+    icon_painter: &'a Option<IconPainter>,
 ) -> (usize, Vec<FilteredItem>) {
     // To not have problems with queues after sorting and truncating the buffer,
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
@@ -289,9 +289,9 @@ fn dyn_collect_number(
 }
 
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
-pub fn dyn_run<I: Iterator<Item = SourceItem>>(
+pub fn dyn_run<'a, I: Iterator<Item = SourceItem<'a>>>(
     query: &str,
-    source: Source<I>,
+    source: Source<'a, I>,
     FilterContext {
         algo,
         number,
@@ -327,7 +327,7 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
             total,
             number,
             winwidth.unwrap_or(100),
-            icon_painter,
+            icon_painter.clone(),
         );
     } else {
         let filtered = match source {
@@ -347,7 +347,8 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
             ..
         } in ranked.into_iter()
         {
-            let text = display_text.unwrap_or_else(|| source_item.display_text().to_owned());
+            let text =
+                display_text.unwrap_or_else(|| source_item.display_text().to_owned().to_string());
             let indices = match_indices;
             println_json!(text, indices);
         }

@@ -8,7 +8,7 @@ use super::*;
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
-pub enum Source<I: Iterator<Item = SourceItem>> {
+pub enum Source<'a, I: Iterator<Item = SourceItem<'a>>> {
     Stdin,
     #[cfg(feature = "enable_dyn")]
     Exec(Box<Exec>),
@@ -16,14 +16,14 @@ pub enum Source<I: Iterator<Item = SourceItem>> {
     List(I),
 }
 
-impl<I: Iterator<Item = SourceItem>> From<PathBuf> for Source<I> {
+impl<'a, I: Iterator<Item = SourceItem<'a>>> From<PathBuf> for Source<'a, I> {
     fn from(fpath: PathBuf) -> Self {
         Self::File(fpath)
     }
 }
 
 #[cfg(feature = "enable_dyn")]
-impl<I: Iterator<Item = SourceItem>> From<Exec> for Source<I> {
+impl<'a, I: Iterator<Item = SourceItem<'a>>> From<Exec> for Source<'a, I> {
     fn from(exec: Exec) -> Self {
         Self::Exec(Box::new(exec))
     }
@@ -89,12 +89,16 @@ macro_rules! source_iter_list {
     };
 }
 
-impl<I: Iterator<Item = SourceItem>> Source<I> {
+impl<'a, I: Iterator<Item = SourceItem<'a>>> Source<'a, I> {
     /// Returns the complete filtered results given `matcher` and `query`.
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
-    pub fn filter_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<FilteredItem>> {
-        let scorer = |item: &SourceItem| matcher.match_query(item, query);
+    pub fn filter_and_collect(
+        self,
+        matcher: Matcher,
+        query: Query,
+    ) -> Result<Vec<FilteredItem<'a>>> {
+        let scorer = |item: &SourceItem| matcher.match_query(item, &query);
 
         let filtered = match self {
             Self::Stdin => source_iter_stdin!(scorer).collect(),

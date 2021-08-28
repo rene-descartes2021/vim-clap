@@ -63,7 +63,7 @@ pub struct Filter {
 
 impl Filter {
     /// Firstly try building the Source from shell command, then the input file, finally reading the source from stdin.
-    fn generate_source<I: Iterator<Item = SourceItem>>(&self) -> Source<I> {
+    fn generate_source<'a, I: Iterator<Item = SourceItem<'a>>>(&self) -> Source<'a, I> {
         if let Some(ref cmd_str) = self.cmd {
             if let Some(ref dir) = self.cmd_dir {
                 Exec::shell(cmd_str).cwd(dir).into()

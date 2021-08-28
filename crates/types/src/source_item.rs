@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+use std::borrow::Cow;
 use structopt::clap::arg_enum;
 
 use pattern::{file_name_only, strip_grep_filepath, tag_name_only};
@@ -44,34 +46,24 @@ pub trait MatchTextFor<'a> {
     fn match_text_for(&self, match_ty: &MatchType) -> Option<MatchText>;
 }
 
-impl<'a> MatchTextFor<'a> for SourceItem {
+impl<'a> MatchTextFor<'a> for SourceItem<'_> {
     fn match_text_for(&self, match_type: &MatchType) -> Option<MatchText> {
         self.match_text_for(match_type)
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct SourceItem {
+pub struct SourceItem<'a> {
     /// Raw line content of the input stream.
-    pub raw: String,
+    pub raw: Cow<'a, str>,
     /// Text for matching.
     pub match_text: Option<(String, usize)>,
     /// The display text can be built when creating a new source item.
     pub display_text: Option<String>,
 }
 
-impl From<&str> for SourceItem {
-    fn from(s: &str) -> Self {
-        Self {
-            raw: s.into(),
-            display_text: None,
-            match_text: None,
-        }
-    }
-}
-
-impl From<String> for SourceItem {
-    fn from(raw: String) -> Self {
+impl<'a> From<Cow<'a, str>> for SourceItem<'a> {
+    fn from(raw: Cow<'a, str>) -> Self {
         Self {
             raw,
             display_text: None,
@@ -80,10 +72,30 @@ impl From<String> for SourceItem {
     }
 }
 
-impl SourceItem {
+impl<'a> From<&'a str> for SourceItem<'a> {
+    fn from(s: &'a str) -> Self {
+        Self {
+            raw: s.into(),
+            display_text: None,
+            match_text: None,
+        }
+    }
+}
+
+impl From<String> for SourceItem<'_> {
+    fn from(raw: String) -> Self {
+        Self {
+            raw: raw.into(),
+            display_text: None,
+            match_text: None,
+        }
+    }
+}
+
+impl<'a> SourceItem<'a> {
     /// Constructs `SourceItem`.
     pub fn new(
-        raw: String,
+        raw: Cow<'a, str>,
         match_text: Option<(String, usize)>,
         display_text: Option<String>,
     ) -> Self {
@@ -94,19 +106,19 @@ impl SourceItem {
         }
     }
 
-    pub fn display_text(&self) -> &str {
+    pub fn display_text(&self) -> Cow<'_, str> {
         if let Some(ref text) = self.display_text {
-            text
+            text.into()
         } else {
-            self.raw.as_str()
+            self.raw.to_owned()
         }
     }
 
-    pub fn match_text(&self) -> &str {
+    pub fn match_text(&self) -> Cow<'_, str> {
         if let Some((ref text, _)) = self.match_text {
-            text
+            text.into()
         } else {
-            self.raw.as_str()
+            self.raw.to_owned()
         }
     }
 
@@ -115,19 +127,19 @@ impl SourceItem {
             return Some((text, offset));
         }
         match match_ty {
-            MatchType::Full => Some((self.raw.as_str(), 0)),
-            MatchType::TagName => tag_name_only(self.raw.as_str()).map(|s| (s, 0)),
-            MatchType::FileName => file_name_only(self.raw.as_str()),
-            MatchType::IgnoreFilePath => strip_grep_filepath(self.raw.as_str()),
+            MatchType::Full => Some((self.raw.borrow(), 0)),
+            MatchType::TagName => tag_name_only(self.raw.borrow()).map(|s| (s, 0)),
+            MatchType::FileName => file_name_only(self.raw.borrow()),
+            MatchType::IgnoreFilePath => strip_grep_filepath(self.raw.borrow()),
         }
     }
 }
 
 /// This struct represents the filtered result of [`SourceItem`].
 #[derive(Debug, Clone)]
-pub struct FilteredItem<T = i64> {
+pub struct FilteredItem<'a, T = i64> {
     /// Tuple of (matched line text, filtering score, indices of matched elements)
-    pub source_item: SourceItem,
+    pub source_item: SourceItem<'a>,
     /// Filtering score.
     pub score: T,
     /// Indices of matched elements.
@@ -138,8 +150,8 @@ pub struct FilteredItem<T = i64> {
     pub display_text: Option<String>,
 }
 
-impl<T> From<(SourceItem, T, Vec<usize>)> for FilteredItem<T> {
-    fn from((source_item, score, match_indices): (SourceItem, T, Vec<usize>)) -> Self {
+impl<'a, T> From<(SourceItem<'a>, T, Vec<usize>)> for FilteredItem<'a, T> {
+    fn from((source_item, score, match_indices): (SourceItem<'a>, T, Vec<usize>)) -> Self {
         Self {
             source_item,
             score,
@@ -149,7 +161,7 @@ impl<T> From<(SourceItem, T, Vec<usize>)> for FilteredItem<T> {
     }
 }
 
-impl<T> From<(String, T, Vec<usize>)> for FilteredItem<T> {
+impl<T> From<(String, T, Vec<usize>)> for FilteredItem<'_, T> {
     fn from((text, score, match_indices): (String, T, Vec<usize>)) -> Self {
         Self {
             source_item: text.into(),
@@ -160,8 +172,8 @@ impl<T> From<(String, T, Vec<usize>)> for FilteredItem<T> {
     }
 }
 
-impl<T> FilteredItem<T> {
-    pub fn new<I: Into<SourceItem>>(item: I, score: T, match_indices: Vec<usize>) -> Self {
+impl<'a, T> FilteredItem<'a, T> {
+    pub fn new<I: Into<SourceItem<'a>>>(item: I, score: T, match_indices: Vec<usize>) -> Self {
         Self {
             source_item: item.into(),
             score,
@@ -170,15 +182,18 @@ impl<T> FilteredItem<T> {
         }
     }
 
-    pub fn display_text_before_truncated(&self) -> &str {
+    pub fn display_text_before_truncated(&self) -> Cow<'_, str> {
         self.source_item.display_text()
     }
 
-    pub fn display_text(&self) -> &str {
+    pub fn display_text(&self) -> String {
         if let Some(ref text) = self.display_text {
-            text
+            text.into()
         } else {
-            self.source_item.display_text()
+            match self.source_item.display_text() {
+                Cow::Owned(s) => s,
+                Cow::Borrowed(s) => s.to_string(),
+            }
         }
     }
 
@@ -187,7 +202,7 @@ impl<T> FilteredItem<T> {
         self.match_indices.iter().map(|x| x + offset).collect()
     }
 
-    pub fn deconstruct(self) -> (SourceItem, T, Vec<usize>) {
+    pub fn deconstruct(self) -> (SourceItem<'a>, T, Vec<usize>) {
         let Self {
             source_item,
             score,

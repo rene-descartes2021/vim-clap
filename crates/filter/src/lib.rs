@@ -90,7 +90,7 @@ impl FilterContext {
 /// Sorts the filtered result by the filter score.
 ///
 /// The item with highest score first, the item with lowest score last.
-pub fn sort_initial_filtered(filtered: Vec<FilteredItem>) -> Vec<FilteredItem> {
+pub fn sort_initial_filtered(filtered: Vec<FilteredItem<'_>>) -> Vec<FilteredItem> {
     let mut filtered = filtered;
     filtered.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
     filtered
@@ -98,23 +98,23 @@ pub fn sort_initial_filtered(filtered: Vec<FilteredItem>) -> Vec<FilteredItem> {
 
 /// Returns the ranked results after applying the matcher algo
 /// given the query String and filtering source.
-pub fn sync_run<I: Iterator<Item = SourceItem>>(
+pub fn sync_run<'a, I: Iterator<Item = SourceItem<'a>>>(
     query: &str,
-    source: Source<I>,
+    source: Source<'a, I>,
     algo: FuzzyAlgorithm,
     match_type: MatchType,
     bonuses: Vec<Bonus>,
-) -> Result<Vec<FilteredItem>> {
+) -> Result<Vec<FilteredItem<'a>>> {
     let matcher = Matcher::with_bonuses(algo, match_type, bonuses);
     let query: Query = query.into();
-    let filtered = source.filter_and_collect(matcher, &query)?;
+    let filtered = source.filter_and_collect(matcher, query)?;
     let ranked = sort_initial_filtered(filtered);
     Ok(ranked)
 }
 
-pub fn simple_run<T: Into<SourceItem>>(
+pub fn simple_run<'a, T: Into<SourceItem<'a>>>(
     lines: impl Iterator<Item = T>,
-    query: &str,
+    query: &'a str,
     bonuses: Option<Vec<Bonus>>,
 ) -> Vec<FilteredItem> {
     let matcher = matcher::Matcher::with_bonuses(

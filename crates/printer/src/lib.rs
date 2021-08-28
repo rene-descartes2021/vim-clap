@@ -185,15 +185,17 @@ pub fn process_top_items<T>(
             })
             .unzip();
 
-        (lines, indices, truncated_map)
+        (
+            lines.into_iter().map(Into::into).collect(),
+            indices,
+            truncated_map,
+        )
     } else {
         let (lines, indices): (Vec<_>, Vec<_>) = top_list
             .into_iter()
             .map(|filtered_item| {
-                (
-                    filtered_item.display_text().to_owned(),
-                    filtered_item.match_indices,
-                )
+                let text = filtered_item.display_text().clone();
+                (text, filtered_item.match_indices)
             })
             .unzip();
 
