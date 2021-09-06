@@ -8,6 +8,7 @@ use crossbeam_channel::Sender;
 use serde_json::json;
 
 use crate::process::tokio::TokioCommand;
+use crate::process::BaseCommand;
 use crate::stdio_server::{
     session::{
         EventHandler, NewSession, Scale, Session, SessionContext, SessionEvent, SyncFilterResults,
@@ -105,6 +106,11 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
 
     if let Some(ref source_cmd) = context.source_cmd {
         // TODO: check cache
+        let base_cmd = BaseCommand::new(source_cmd.to_string(), context.cwd.clone());
+
+        if let Some((total, path)) = base_cmd.cached_info() {
+            return Ok(Scale::Cache { total, path });
+        }
 
         // Can not use subprocess::Exec::shell here.
         //

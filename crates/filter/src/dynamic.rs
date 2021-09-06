@@ -74,8 +74,8 @@ fn select_top_items_to_show(
     buffer: &mut Vec<FilteredItem>,
     iter: &mut impl Iterator<Item = FilteredItem>,
 ) -> std::result::Result<usize, SelectedTopItemsInfo> {
-    let mut top_scores: [Score; ITEMS_TO_SHOW] = [Score::min_value(); ITEMS_TO_SHOW];
-    let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
+    let mut top_scores = [Score::min_value(); ITEMS_TO_SHOW];
+    let mut top_results = [usize::min_value(); ITEMS_TO_SHOW];
 
     let mut total = 0;
     let res = iter.try_for_each(|filtered_item| {

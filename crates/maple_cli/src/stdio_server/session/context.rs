@@ -27,6 +27,9 @@ pub enum Scale {
 
     /// Small scale, in which case we do not have to use the dynamic filtering.
     Small { total: usize, lines: Vec<String> },
+
+    /// Mostly large scale, but cached.
+    Cache { total: usize, path: PathBuf },
 }
 
 impl Default for Scale {
