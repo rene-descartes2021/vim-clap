@@ -223,13 +223,13 @@ impl Match {
         let column = self.column();
 
         let formatted_string = format!(
-            "  {}:{}:{}",
+            "{}:{}:{}",
             line_number,
             column,
             self.lines.text().trim_end()
         );
 
-        let offset = display_width(line_number as usize) + display_width(column) + 2 + 2;
+        let offset = display_width(line_number as usize) + display_width(column) + 2;
 
         (formatted_string, offset)
     }

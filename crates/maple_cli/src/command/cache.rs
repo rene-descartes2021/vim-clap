@@ -13,11 +13,11 @@ use crate::datastore::CACHE_INFO_IN_MEMORY;
 #[derive(StructOpt, Debug, Clone)]
 pub struct Cache {
     /// List the current cached entries.
-    #[structopt(short, long)]
+    #[structopt(long)]
     list: bool,
 
     /// Purge all the cached contents.
-    #[structopt(short, long)]
+    #[structopt(long)]
     purge: bool,
 }
 
