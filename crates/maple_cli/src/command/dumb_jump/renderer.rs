@@ -19,16 +19,19 @@ pub fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String
     group_refs
         .values()
         .flat_map(|lines| {
-            let mut inner_group: Vec<(String, Vec<usize>)> = Vec::with_capacity(lines.len() + 1);
+            let mut inner_group: Vec<(String, Vec<usize>)> = Vec::with_capacity(lines.len() + 3);
 
             if !kind_inserted {
-                inner_group.push((format!("{} {} in {} files", matches.len(), kind, keys_len), vec![]));
+                inner_group.push((
+                    format!("{} {} in {} files", matches.len(), kind, keys_len),
+                    vec![],
+                ));
                 kind_inserted = true;
             }
 
             inner_group.push((format!("{} [{}]", lines[0].path(), lines.len()), vec![]));
 
-            inner_group.extend(lines.iter().map(|line| line.build_jump_line_bare(word)));
+            inner_group.extend(lines.iter().map(|line| line.build_jump_line_classify(word)));
 
             inner_group.push(("".into(), vec![]));
 

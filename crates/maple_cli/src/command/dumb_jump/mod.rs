@@ -53,6 +53,10 @@ pub struct DumbJump {
     #[structopt(long)]
     pub kind: Option<String>,
 
+    /// Classify the results in group.
+    #[structopt(long)]
+    pub classify: bool,
+
     /// Specify the working directory.
     #[structopt(long, parse(from_os_str))]
     pub cmd_dir: Option<PathBuf>,
@@ -75,7 +79,6 @@ impl DumbJump {
 
     pub async fn references_or_occurrences(
         &self,
-        classify: bool,
         exact_or_inverse_terms: &ExactOrInverseTerms,
     ) -> Result<Lines> {
         let word = Word::new(self.word.to_string())?;
@@ -95,7 +98,7 @@ impl DumbJump {
         let comments = get_comments_by_ext(&self.extension);
 
         // render the results in group.
-        if true {
+        if self.classify {
             let res = definitions_and_references(lang, &word, &self.cmd_dir, comments).await?;
 
             let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res

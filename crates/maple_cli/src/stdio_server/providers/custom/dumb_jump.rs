@@ -100,12 +100,13 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
         word: identifier,
         extension,
         kind: None,
+        classify: true,
         cmd_dir: Some(cwd.into()),
     };
 
     // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
     match dumb_jump
-        .references_or_occurrences(false, &exact_or_inverse_terms)
+        .references_or_occurrences(&exact_or_inverse_terms)
         .await
     {
         Ok(Lines { lines, mut indices }) => {

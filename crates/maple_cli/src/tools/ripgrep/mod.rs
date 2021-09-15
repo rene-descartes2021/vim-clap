@@ -218,24 +218,22 @@ impl Match {
         (formatted, indices)
     }
 
-    fn jump_line_format_bare(&self) -> (String, usize) {
+    fn jump_line_format_classify(&self) -> (String, usize) {
         let line_number = self.line_number();
-        let column = self.column();
 
         let formatted_string = format!(
-            "{}:{}:{}",
+            "{}:{}",
             line_number,
-            column,
             self.lines.text().trim_end()
         );
 
-        let offset = display_width(line_number as usize) + display_width(column) + 2;
+        let offset = display_width(line_number as usize) + 1;
 
         (formatted_string, offset)
     }
 
-    pub fn build_jump_line_bare(&self, word: &Word) -> (String, Vec<usize>) {
-        let (formatted, offset) = self.jump_line_format_bare();
+    pub fn build_jump_line_classify(&self, word: &Word) -> (String, Vec<usize>) {
+        let (formatted, offset) = self.jump_line_format_classify();
         let indices = self.match_indices_for_dumb_jump(offset, word);
         (formatted, indices)
     }
