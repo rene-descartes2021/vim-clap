@@ -6,7 +6,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use rayon::prelude::*;
 use serde::Deserialize;
 
-use crate::command::dumb_jump::Lines;
+use crate::command::dumb_jump::{Lines, Results};
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
@@ -237,7 +237,7 @@ pub async fn definitions_and_references_lines(
     dir: &Option<PathBuf>,
     comments: &[&str],
     exact_or_inverse_terms: &ExactOrInverseTerms,
-) -> Result<Lines> {
+) -> Result<Results> {
     let (definitions, occurrences) = definitions_and_occurences(word, lang, dir, comments).await;
 
     let defs = flatten(&definitions);
@@ -284,10 +284,10 @@ pub async fn definitions_and_references_lines(
                 exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", &word))
             })
             .unzip();
-        return Ok(Lines::new(lines, indices));
+        return Ok(Results::Lines(Lines::new(lines, indices)));
     }
 
-    Ok(Lines::new(lines, indices))
+    Ok(Results::Lines(Lines::new(lines, indices)))
 }
 
 pub async fn definitions_and_references(

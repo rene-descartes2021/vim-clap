@@ -17,6 +17,8 @@ use crate::utils::ExactOrInverseTerms;
 
 mod renderer;
 
+pub use self::renderer::Results;
+
 /// All the lines as well as their match indices that can be sent to the vim side directly.
 #[derive(Clone, Debug)]
 pub struct Lines {
@@ -80,7 +82,7 @@ impl DumbJump {
     pub async fn references_or_occurrences(
         &self,
         exact_or_inverse_terms: &ExactOrInverseTerms,
-    ) -> Result<Lines> {
+    ) -> Result<Results> {
         let word = Word::new(self.word.to_string())?;
 
         let lang = match get_language_by_ext(&self.extension) {

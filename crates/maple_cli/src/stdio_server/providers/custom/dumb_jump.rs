@@ -11,7 +11,7 @@ use serde_json::json;
 use filter::Query;
 
 use crate::command::ctags::tagsfile::{Tags, TagsConfig};
-use crate::command::dumb_jump::{DumbJump, Lines};
+use crate::command::dumb_jump::{DumbJump, Lines, Results};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
@@ -109,7 +109,10 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
         .references_or_occurrences(&exact_or_inverse_terms)
         .await
     {
-        Ok(Lines { lines, mut indices }) => {
+        Ok(Results::DisplayLines(display_lines)) => {
+            todo!("handle display lines");
+        }
+        Ok(Results::Lines(Lines { lines, mut indices })) => {
             let total_lines = lines;
             let total = total_lines.len();
             // Only show the top 200 items.

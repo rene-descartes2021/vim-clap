@@ -16,9 +16,24 @@ pub struct Location {
 }
 
 #[derive(Debug, Clone)]
-pub struct Results {
+pub struct DisplayLines {
     pub lines: Vec<DisplayLine>,
     pub locations: HashMap<usize, Location>,
+}
+
+#[derive(Debug, Clone)]
+pub enum Results {
+    Lines(Lines),
+    DisplayLines(DisplayLines),
+}
+
+impl Results {
+    pub fn print(&self) {
+        match self {
+            Self::Lines(lines) => lines.print(),
+            Self::DisplayLines(display_lines) => todo!("display lines "),
+        }
+    }
 }
 
 // TODO: a new renderer for dumb jump
@@ -80,7 +95,7 @@ pub fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Results {
         })
         .collect();
 
-    Results { lines, locations }
+    Results::DisplayLines(DisplayLines { lines, locations })
 }
 
 pub fn render_jump_line(
@@ -88,7 +103,7 @@ pub fn render_jump_line(
     kind: &str,
     word: &Word,
     exact_or_inverse_terms: &ExactOrInverseTerms,
-) -> Lines {
+) -> Results {
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = matches
         .into_par_iter()
         .filter_map(|line| {
@@ -96,5 +111,5 @@ pub fn render_jump_line(
         })
         .unzip();
 
-    Lines::new(lines, indices)
+    Results::Lines(Lines::new(lines, indices))
 }
