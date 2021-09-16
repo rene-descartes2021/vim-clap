@@ -100,13 +100,14 @@ impl DumbJump {
         // render the results in group.
         if self.classify {
             let res = definitions_and_references(lang, &word, &self.cmd_dir, comments).await?;
+            todo!()
 
-            let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
-                .into_par_iter()
-                .flat_map(|(match_kind, matches)| renderer::render(matches, &match_kind, &word))
-                .unzip();
+            // let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
+            // .into_par_iter()
+            // .flat_map(|(match_kind, matches)| renderer::render(matches, &match_kind, &word))
+            // .unzip();
 
-            Ok(Lines::new(lines, indices))
+            // Ok(Lines::new(lines, indices))
         } else {
             definitions_and_references_lines(
                 lang,

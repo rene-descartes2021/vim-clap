@@ -1,9 +1,28 @@
 use super::*;
 
 use std::collections::HashMap;
+use std::path::PathBuf;
+
+#[derive(Debug, Clone, Default)]
+pub struct DisplayLine {
+    pub display: String,
+    pub indices: Option<Vec<usize>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Location {
+    pub path: PathBuf,
+    pub line_number: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct Results {
+    pub lines: Vec<DisplayLine>,
+    pub locations: HashMap<usize, Location>,
+}
 
 // TODO: a new renderer for dumb jump
-pub fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String, Vec<usize>)> {
+pub fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Results {
     let mut group_refs = HashMap::new();
 
     // references are these occurrences not in the definitions.
@@ -12,32 +31,56 @@ pub fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String
         group.push(line);
     }
 
-    let mut kind_inserted = false;
+    let mut title_inserted = false;
 
     let keys_len = group_refs.keys().len();
 
-    group_refs
+    let mut lnum = 1;
+    let mut locations = HashMap::new();
+
+    let lines = group_refs
         .values()
         .flat_map(|lines| {
-            let mut inner_group: Vec<(String, Vec<usize>)> = Vec::with_capacity(lines.len() + 3);
+            let mut inner_group: Vec<DisplayLine> = Vec::with_capacity(lines.len() + 3);
 
-            if !kind_inserted {
-                inner_group.push((
-                    format!("{} {} in {} files", matches.len(), kind, keys_len),
-                    vec![],
-                ));
-                kind_inserted = true;
+            if !title_inserted {
+                inner_group.push(DisplayLine {
+                    display: format!("{} {} in {} files", matches.len(), kind, keys_len),
+                    indices: None,
+                });
+                title_inserted = true;
+                lnum += 1;
             }
 
-            inner_group.push((format!("{} [{}]", lines[0].path(), lines.len()), vec![]));
+            inner_group.push(DisplayLine {
+                display: format!("{} [{}]", lines[0].path(), lines.len()),
+                indices: None,
+            });
 
-            inner_group.extend(lines.iter().map(|line| line.build_jump_line_classify(word)));
+            inner_group.extend(lines.iter().map(|line| {
+                locations.insert(
+                    lnum,
+                    Location {
+                        path: line.path.text().to_string().into(),
+                        line_number: line.line_number.unwrap_or_default(),
+                    },
+                );
+                lnum += 1;
 
-            inner_group.push(("".into(), vec![]));
+                let (display, indices) = line.build_jump_line_classify(word);
+                DisplayLine {
+                    display,
+                    indices: Some(indices),
+                }
+            }));
+
+            inner_group.push(DisplayLine::default());
 
             inner_group
         })
-        .collect()
+        .collect();
+
+    Results { lines, locations }
 }
 
 pub fn render_jump_line(
@@ -47,7 +90,7 @@ pub fn render_jump_line(
     exact_or_inverse_terms: &ExactOrInverseTerms,
 ) -> Lines {
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = matches
-        .into_iter()
+        .into_par_iter()
         .filter_map(|line| {
             exact_or_inverse_terms.check_jump_line(line.build_jump_line(kind, &word))
         })
