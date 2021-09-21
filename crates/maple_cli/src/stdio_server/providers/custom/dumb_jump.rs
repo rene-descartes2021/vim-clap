@@ -51,12 +51,14 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
         cwd: String,
         query: String,
         extension: String,
+        classify: Option<bool>,
     }
 
     let Params {
         cwd,
         query,
         extension,
+        classify,
     } = msg.deserialize_params_unsafe();
 
     if query.is_empty() {
@@ -100,12 +102,13 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
         word: identifier,
         extension,
         kind: None,
+        classify: classify.unwrap_or(false),
         cmd_dir: Some(cwd.into()),
     };
 
     // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
     match dumb_jump
-        .references_or_occurrences(false, &exact_or_inverse_terms)
+        .references_or_occurrences(&exact_or_inverse_terms)
         .await
     {
         Ok(Lines { lines, mut indices }) => {

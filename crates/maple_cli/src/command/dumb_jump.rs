@@ -2,7 +2,7 @@
 //!
 //! This module requires the executable rg with `--json` and `--pcre2` is installed in the system.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -39,13 +39,15 @@ impl Lines {
 
 // TODO: a new renderer for dumb jump
 fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String, Vec<usize>)> {
-    let mut group_refs = HashMap::new();
+    let mut group_refs = BTreeMap::new();
 
     // references are these occurrences not in the definitions.
     for line in matches.iter() {
         let group = group_refs.entry(line.path()).or_insert_with(Vec::new);
         group.push(line);
     }
+
+    let keys_len = group_refs.keys().len();
 
     let mut kind_inserted = false;
 
@@ -55,13 +57,18 @@ fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String, Ve
             let mut inner_group: Vec<(String, Vec<usize>)> = Vec::with_capacity(lines.len() + 1);
 
             if !kind_inserted {
-                inner_group.push((format!("[{}]", kind), vec![]));
+                inner_group.push((
+                    format!("{} {} in {} files", matches.len(), kind, keys_len),
+                    vec![],
+                ));
                 kind_inserted = true;
             }
 
-            inner_group.push((format!("  {} [{}]", lines[0].path(), lines.len()), vec![]));
+            inner_group.push((format!("{} [{}]", lines[0].path(), lines.len()), vec![]));
 
-            inner_group.extend(lines.iter().map(|line| line.build_jump_line_bare(word)));
+            inner_group.extend(lines.iter().map(|line| line.build_jump_line_classify(word)));
+
+            inner_group.push(("".into(), vec![]));
 
             inner_group
         })
@@ -95,6 +102,10 @@ pub struct DumbJump {
     #[structopt(index = 2, long)]
     pub extension: String,
 
+    /// Show results per file.
+    #[structopt(long)]
+    pub classify: bool,
+
     /// Definition kind.
     #[structopt(long)]
     pub kind: Option<String>,
@@ -121,7 +132,6 @@ impl DumbJump {
 
     pub async fn references_or_occurrences(
         &self,
-        classify: bool,
         exact_or_inverse_terms: &ExactOrInverseTerms,
     ) -> Result<Lines> {
         let word = Word::new(self.word.to_string())?;
@@ -141,7 +151,7 @@ impl DumbJump {
         let comments = get_comments_by_ext(&self.extension);
 
         // render the results in group.
-        if classify {
+        if self.classify {
             let res = definitions_and_references(lang, &word, &self.cmd_dir, comments).await?;
 
             let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res

@@ -72,6 +72,9 @@ function! clap#client#notify_on_init(method, ...) abort
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \   'display_winwidth': winwidth(g:clap.display.winid),
         \ }
+  if params.display_winwidth < 0
+    let params.display_winwidth = 100
+  endif
   if has_key(g:clap.preview, 'winid')
         \ && clap#api#floating_win_is_valid(g:clap.preview.winid)
     let params['preview_winheight'] = winheight(g:clap.preview.winid)
@@ -100,6 +103,7 @@ function! clap#client#call_on_init(method, callback, ...) abort
   if a:callback isnot v:null
     let s:handlers[s:req_id] = a:callback
   endif
+  return s:session_id
 endfunction
 
 " One optional argument: Dict, extra params
@@ -149,6 +153,23 @@ endfunction
 
 function! clap#client#call(method, callback, params) abort
   call clap#client#notify(a:method, a:params)
+  if a:callback isnot v:null
+    let s:handlers[s:req_id] = a:callback
+  endif
+endfunction
+
+function! clap#client#notify_with_id(method, params, session_id) abort
+  let s:req_id += 1
+  call clap#job#daemon#send_message(json_encode({
+        \ 'id': s:req_id,
+        \ 'session_id': a:session_id,
+        \ 'method': a:method,
+        \ 'params': a:params,
+        \ }))
+endfunction
+
+function! clap#client#call_with_id(method, callback, params, session_id) abort
+  call clap#client#notify_with_id(a:method, a:params, a:session_id)
   if a:callback isnot v:null
     let s:handlers[s:req_id] = a:callback
   endif
