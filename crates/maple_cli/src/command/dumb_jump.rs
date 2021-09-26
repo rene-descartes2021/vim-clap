@@ -49,19 +49,19 @@ fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String, Ve
 
     let keys_len = group_refs.keys().len();
 
-    let mut kind_inserted = false;
+    let mut title_inserted = false;
 
     group_refs
         .values()
         .flat_map(|lines| {
             let mut inner_group: Vec<(String, Vec<usize>)> = Vec::with_capacity(lines.len() + 1);
 
-            if !kind_inserted {
+            if !title_inserted {
                 inner_group.push((
                     format!("{} {} in {} files", matches.len(), kind, keys_len),
                     vec![],
                 ));
-                kind_inserted = true;
+                title_inserted = true;
             }
 
             inner_group.push((format!("{} [{}]", lines[0].path(), lines.len()), vec![]));

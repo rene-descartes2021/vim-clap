@@ -106,6 +106,7 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
         cmd_dir: Some(cwd.into()),
     };
 
+    let now = std::time::Instant::now();
     // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
     match dumb_jump
         .references_or_occurrences(&exact_or_inverse_terms)
@@ -114,9 +115,16 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
         Ok(Lines { lines, mut indices }) => {
             let total_lines = lines;
             let total = total_lines.len();
+            let title = format!("elapsed {} ms", now.elapsed().as_millis());
             // Only show the top 200 items.
-            let lines = total_lines.iter().take(200).collect::<Vec<_>>();
+            let lines = std::iter::once(&title)
+                .chain(total_lines.iter().take(200))
+                .collect::<Vec<_>>();
+
             indices.truncate(200);
+            let indices = std::iter::once(vec![])
+                .chain(indices.into_iter())
+                .collect::<Vec<_>>();
 
             let result = json!({
               "id": msg_id,
