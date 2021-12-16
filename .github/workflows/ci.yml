@@ -94,3 +94,34 @@ jobs:
       run: |
         cd pythonx/clap/fuzzymatch-rs
         cargo test --no-default-features
+
+  publish-macOS-M1-for-v0_30:
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # This should work with only the `include`s but it currently doesn't because of this bug:
+        # https://github.community/t5/How-to-use-Git-and-GitHub/GitHub-Actions-Matrix-options-dont-work-as-documented/td-p/29558
+        os: [11-arm]
+        include:
+          - os: 11-arm
+            artifact_name: maple
+            asset_name: maple-aarch64-apple-darwin
+
+    steps:
+    - uses: hecrj/setup-rust-action@master
+      with:
+        rust-version: stable
+
+    - uses: actions/checkout@v1
+
+    - name: Build
+      run: cargo build --release --locked
+
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v1-release
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: target/release/${{ matrix.artifact_name }}
+        asset_name: ${{ matrix.asset_name }}
+        tag: v0.30
