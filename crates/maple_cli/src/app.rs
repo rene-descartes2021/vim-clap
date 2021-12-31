@@ -41,6 +41,9 @@ pub enum Cmd {
     /// Start the forerunner job of grep.
     #[structopt(name = "ripgrep-forerunner")]
     RipGrepForerunner(command::grep::RipGrepForerunner),
+    /// TreeSitter
+    #[structopt(name = "tree-sitter")]
+    TreeSitter(command::tree_sitter::TreeSitter),
     /// Retrive the latest remote release info.
     #[structopt(name = "upgrade")]
     Upgrade(upgrade::Upgrade),
@@ -108,6 +111,7 @@ impl Maple {
             Cmd::Blines(blines) => blines.run(self.params)?,
             Cmd::Filter(filter) => filter.run(self.params)?,
             Cmd::Helptags(helptags) => helptags.run()?,
+            Cmd::TreeSitter(tree_sitter) => tree_sitter.run()?,
             Cmd::DumbJump(dumb_jump) => dumb_jump.run().await?,
             Cmd::RipGrepForerunner(rip_grep_forerunner) => rip_grep_forerunner.run(self.params)?,
             Cmd::Rpc => {
