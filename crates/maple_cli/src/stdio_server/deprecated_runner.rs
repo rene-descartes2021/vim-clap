@@ -87,7 +87,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                         "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                        "filer/on_init" => manager.new_session(call, FilerHandle),
+                        "filer/on_init" => manager.new_session(call, FilerHandle::new()),
                         "filer/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
 

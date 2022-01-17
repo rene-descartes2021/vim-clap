@@ -1,7 +1,7 @@
-use parking_lot::Mutex;
 use std::sync::Arc;
 
 use anyhow::Result;
+use parking_lot::Mutex;
 use crossbeam_channel::Sender;
 use serde::Deserialize;
 use serde_json::json;

@@ -4,6 +4,7 @@ use std::{fs, io};
 
 use anyhow::Result;
 use jsonrpc_core::Value;
+use parking_lot::Mutex;
 use serde_json::json;
 
 use icon::prepend_filer_icon;
@@ -78,15 +79,44 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 }
 
 #[derive(Clone)]
-pub struct FilerHandle;
+pub struct FilerHandle {
+    lines: Arc<Mutex<Vec<String>>>,
+}
+
+impl FilerHandle {
+    pub fn new() -> Self {
+        Self {
+            lines: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    fn handle_filer_message(&self, msg: MethodCall) {
+        let cwd = msg.get_cwd();
+
+        match read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None) {
+            Ok(entries) => {
+                let result = json!({ "entries": entries, "dir": cwd, "total": entries.len() });
+                let response = json!({ "id": msg.id, "provider_id": "filer", "result": result });
+                write_response(response);
+
+                let mut lines = self.lines.lock();
+                *lines = entries;
+                drop(lines);
+            }
+            Err(err) => {
+                tracing::error!(?cwd, "Failed to read directory entries");
+                let error = json!({"message": err.to_string(), "dir": cwd});
+                let response = json!({ "id": msg.id, "provider_id": "filer", "message": error });
+                write_response(response);
+            }
+        }
+    }
+}
 
 #[async_trait::async_trait]
 impl EventHandle for FilerHandle {
     async fn on_create(&mut self, call: Call, _context: Arc<SessionContext>) {
-        write_response(
-            handle_filer_message(call.unwrap_method_call())
-                .expect("Both Success and Error are returned"),
-        );
+        self.handle_filer_message(call.unwrap_method_call());
     }
 
     async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
@@ -120,24 +150,9 @@ impl EventHandle for FilerHandle {
     }
 
     async fn on_typed(&mut self, msg: MethodCall, _context: Arc<SessionContext>) -> Result<()> {
-        write_response(handle_filer_message(msg).expect("Both Success and Error are returned"));
+        self.handle_filer_message(msg);
         Ok(())
     }
-}
-
-fn handle_filer_message(msg: MethodCall) -> std::result::Result<Value, Value> {
-    let cwd = msg.get_cwd();
-
-    read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None)
-        .map(|entries| {
-            let result = json!({ "entries": entries, "dir": cwd, "total": entries.len() });
-            json!({ "id": msg.id, "provider_id": "filer", "result": result })
-        })
-        .map_err(|err| {
-            tracing::error!(?cwd, "Failed to read directory entries");
-            let error = json!({"message": err.to_string(), "dir": cwd});
-            json!({ "id": msg.id, "provider_id": "filer", "message": error })
-        })
 }
 
 #[cfg(test)]
