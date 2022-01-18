@@ -85,11 +85,11 @@ pub(super) async fn find_occurrences_by_lang(
 /// Returns a tuple of (definition_kind, ripgrep_matches) by searching given language `lang`.
 pub(super) async fn find_definitions_with_kind(
     lang: &str,
-    kind: &DefinitionKind,
+    kind: DefinitionKind,
     word: &Word,
     dir: Option<&PathBuf>,
 ) -> Result<(DefinitionKind, Vec<Match>)> {
-    let regexp = build_full_regexp(lang, kind, word)?;
+    let regexp = build_full_regexp(lang, &kind, word)?;
     let command = format!("rg --trim --json --pcre2 --type {} -e '{}'", lang, regexp);
-    find_matches(command, dir, None).map(|defs| (kind.clone(), defs))
+    find_matches(command, dir, None).map(|defs| (kind, defs))
 }

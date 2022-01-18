@@ -15,7 +15,7 @@ use crate::paths::AbsPathBuf;
 use crate::process::{rstd::StdCommand, BaseCommand};
 use crate::utils::PROJECT_DIRS;
 
-pub const EXCLUDE: &str = ".git,*.json,node_modules,target,_build,build,dist";
+pub const EXCLUDE: &str = ".git,*.json,node_modules,target,_build,build,dist,tags,GTAGS,GRTAGS,GPATH";
 
 pub static DEFAULT_EXCLUDE_OPT: Lazy<String> = Lazy::new(|| {
     EXCLUDE

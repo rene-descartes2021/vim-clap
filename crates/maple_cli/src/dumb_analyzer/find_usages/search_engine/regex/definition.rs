@@ -75,11 +75,11 @@ impl<'a> FindUsages<'a> {
     }
 
     /// Returns all kinds of definitions.
-    pub async fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
+    async fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
         let all_def_futures = get_definition_rules(self.lang)?
             .0
             .keys()
-            .map(|kind| find_definitions_with_kind(self.lang, kind, self.word, self.dir));
+            .map(|kind| find_definitions_with_kind(self.lang, kind.clone(), self.word, self.dir));
 
         let maybe_defs = futures::future::join_all(all_def_futures).await;
 
