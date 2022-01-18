@@ -42,9 +42,15 @@ impl RegexSearcher {
         // TODO: also take word as query?
         let word = Word::new(self.word)?;
 
-        do_search_usages(lang, &word, &self.dir, comments, exact_or_inverse_terms)
-            .await?
-            .print();
+        do_search_usages(
+            lang,
+            &word,
+            self.dir.as_ref(),
+            comments,
+            exact_or_inverse_terms,
+        )
+        .await?
+        .print();
 
         Ok(())
     }
@@ -68,7 +74,7 @@ impl RegexSearcher {
             Ok(lang) => lang,
             Err(_) => {
                 // Search the occurrences if no language detected.
-                let occurrences = find_occurrences_by_ext(&word, &extension, &dir).await?;
+                let occurrences = find_occurrences_by_ext(&word, &extension, dir.as_ref()).await?;
                 let usages = occurrences
                     .into_par_iter()
                     .filter_map(|line| {
@@ -85,7 +91,7 @@ impl RegexSearcher {
 
         // render the results in group.
         if classify {
-            let res = definitions_and_references(lang, &word, &dir, comments).await?;
+            let res = definitions_and_references(lang, &word, dir.as_ref(), comments).await?;
 
             let usages = res
                 .into_par_iter()
@@ -95,7 +101,7 @@ impl RegexSearcher {
 
             Ok(usages.into())
         } else {
-            do_search_usages(lang, &word, &dir, comments, exact_or_inverse_terms).await
+            do_search_usages(lang, &word, dir.as_ref(), comments, exact_or_inverse_terms).await
         }
     }
 }

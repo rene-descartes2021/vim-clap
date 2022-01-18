@@ -1,4 +1,5 @@
 use std::path::{Path, MAIN_SEPARATOR};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::{fs, io};
 
@@ -83,6 +84,44 @@ pub struct FilerHandle {
     lines: Arc<Mutex<Vec<String>>>,
 }
 
+// function! s:try_go_to_dir_is_ok() abort
+// let input = g:clap.input.get()
+// if input[-1:] ==# s:PATH_SEPERATOR
+// if isdirectory(expand(input))
+// call s:reset_to(expand(input))
+// return v:true
+// endif
+// endif
+// return v:false
+// endfunction
+
+#[derive(Clone, Debug)]
+enum Action {
+    Tab,
+    Backspace,
+}
+
+impl Action {
+    fn dispatch(&self, msg: MethodCall) {
+        match self {
+            Self::Tab => {}
+            Self::Backspace => {}
+        }
+    }
+}
+
+impl FromStr for Action {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "tab" => Ok(Self::Tab),
+            "backspace" => Ok(Self::Backspace),
+            _ => Err(()),
+        }
+    }
+}
+
 impl FilerHandle {
     pub fn new() -> Self {
         Self {
@@ -90,7 +129,7 @@ impl FilerHandle {
         }
     }
 
-    fn handle_filer_message(&self, msg: MethodCall) {
+    fn process_message(&self, msg: MethodCall) {
         let cwd = msg.get_cwd();
 
         match read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None) {
@@ -116,7 +155,7 @@ impl FilerHandle {
 #[async_trait::async_trait]
 impl EventHandle for FilerHandle {
     async fn on_create(&mut self, call: Call, _context: Arc<SessionContext>) {
-        self.handle_filer_message(call.unwrap_method_call());
+        self.process_message(call.unwrap_method_call());
     }
 
     async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
@@ -150,7 +189,23 @@ impl EventHandle for FilerHandle {
     }
 
     async fn on_typed(&mut self, msg: MethodCall, _context: Arc<SessionContext>) -> Result<()> {
-        self.handle_filer_message(msg);
+        #[derive(serde::Deserialize, Debug)]
+        struct Params {
+            cwd: String,
+            current_entry: String,
+            curline: String,
+            action: Option<String>,
+        }
+
+        let params: Params = msg.clone().parse_unsafe();
+
+        tracing::debug!("========== on_typed params: {:?}", params);
+
+        match params.action.and_then(|a| a.parse::<Action>().ok()) {
+            Some(action) => action.dispatch(msg),
+            None => self.process_message(msg),
+        }
+
         Ok(())
     }
 }

@@ -97,7 +97,11 @@ function! s:filter_or_send_message() abort
   if has_key(s:filer_cache, s:current_dir)
     call s:do_filter()
   else
-    call clap#client#call('filer/on_typed', function('s:handle_response'), {'cwd': s:current_dir})
+    call clap#client#call('filer/on_typed', function('s:handle_response'), {
+          \ 'cwd': s:current_dir,
+          \ 'current_entry': s:get_current_entry(),
+          \ 'curline': g:clap.display.getcurline(),
+          \ })
   endif
 endfunction
 
@@ -180,6 +184,7 @@ endfunction
 
 function! s:try_go_to_dir_is_ok() abort
   let input = g:clap.input.get()
+  echom 'input:'.input
   if input[-1:] ==# s:PATH_SEPERATOR
     if isdirectory(expand(input))
       call s:reset_to(expand(input))
@@ -189,7 +194,34 @@ function! s:try_go_to_dir_is_ok() abort
   return v:false
 endfunction
 
+function! s:handle_response_new(result, error) abort
+  echom string(a:result)
+  if a:error isnot v:null
+    call s:handle_error(a:error)
+    return
+  endif
+  if a:result.total == 0
+    let s:filer_empty_cache[a:result.dir] = s:DIRECTORY_IS_EMPTY
+    call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
+  else
+    let s:filer_cache[a:result.dir] = a:result.entries
+    call g:clap.display.set_lines(a:result.entries)
+  endif
+  call clap#sign#reset_to_first_line()
+  call clap#state#refresh_matches_count(string(a:result.total))
+  call g:clap#display_win.shrink_if_undersize()
+endfunction
+
 function! s:tab_action() abort
+  echom s:get_current_entry()
+  call clap#client#call('filer/on_typed', function('s:handle_response_new'), {
+        \ 'cwd': s:current_dir,
+        \ 'debounce': v:false,
+        \ 'current_entry': s:get_current_entry(),
+        \ 'curline': g:clap.display.getcurline(),
+        \ 'action': 'Tab',
+        \ })
+
   if s:try_go_to_dir_is_ok()
     return
   endif

@@ -52,12 +52,12 @@ static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
 struct FindUsages<'a> {
     lang: &'a str,
     word: &'a Word,
-    dir: &'a Option<PathBuf>,
+    dir: Option<&'a PathBuf>,
 }
 
 impl<'a> FindUsages<'a> {
     /// Constructs a new instance of [`FindUsages`].
-    pub fn new(lang: &'a str, word: &'a Word, dir: &'a Option<PathBuf>) -> Self {
+    pub fn new(lang: &'a str, word: &'a Word, dir: Option<&'a PathBuf>) -> Self {
         Self { lang, word, dir }
     }
 
@@ -281,7 +281,7 @@ impl Occurrences {
 pub(super) async fn do_search_usages(
     lang: &str,
     word: &Word,
-    dir: &Option<PathBuf>,
+    dir: Option<&PathBuf>,
     comments: &[&str],
     exact_or_inverse_terms: &ExactOrInverseTerms,
 ) -> Result<Usages> {
@@ -340,7 +340,7 @@ pub(super) async fn do_search_usages(
 pub(super) async fn definitions_and_references(
     lang: &str,
     word: &Word,
-    dir: &Option<PathBuf>,
+    dir: Option<&PathBuf>,
     comments: &[&str],
 ) -> Result<HashMap<MatchKind, Vec<Match>>> {
     let (definitions, mut occurrences) = FindUsages::new(lang, word, dir).all(comments).await;
