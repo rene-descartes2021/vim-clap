@@ -46,7 +46,7 @@ pub fn preview_file<P: AsRef<Path>>(
 ) -> Result<(Vec<String>, String)> {
     let abs_path = as_absolute_path(path.as_ref())?;
     let lines_iter = read_first_lines(path.as_ref(), size)?;
-    let lines = std::iter::once(abs_path.clone())
+    let lines = std::iter::once(path.as_ref().display().to_string())
         .chain(truncate_preview_lines(max_width, lines_iter))
         .collect::<Vec<_>>();
 

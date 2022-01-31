@@ -42,6 +42,8 @@ let s:shadow_winhl = 'Normal:ClapShadow,NormalNC:ClapShadow,EndOfBuffer:ClapShad
 let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay,ColorColumn:ClapDisplay'
 let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview,ColorColumn:ClapPreview'
 
+let s:preview_title_ns_id = nvim_create_namespace('clap_preview_title')
+
 " shadow
 "  -----------------------------
 " | spinner | input             |
@@ -331,7 +333,7 @@ function! s:adjust_display_for_border_symbol() abort
 endfunction
 
 function! s:get_config_preview(height) abort
-  let preview_direction = clap#preview#direction() 
+  let preview_direction = clap#preview#direction()
   if preview_direction ==# 'LR'
     let opts = nvim_win_get_config(s:display_winid)
     let opts.row -= 1
@@ -363,7 +365,32 @@ function! s:create_preview_win(height) abort
   if !nvim_buf_is_valid(s:preview_bufnr)
     let s:preview_bufnr = nvim_create_buf(v:false, v:true)
   endif
-  silent let s:preview_winid = nvim_open_win(s:preview_bufnr, v:false, s:get_config_preview(a:height))
+  let preview_config = s:get_config_preview(a:height)
+  let preview_config.row += 1
+  let preview_config.height -= 1
+  silent let s:preview_winid = nvim_open_win(s:preview_bufnr, v:false, preview_config)
+
+  let s:preview_title_bufnr = nvim_create_buf(v:false, v:true)
+  let preview_direction = clap#preview#direction()
+  if preview_direction ==# 'LR'
+    let preview_config.height = 1
+    let preview_config.row -= 1
+    let preview_config.width += 2
+    silent! unlet preview_config.border
+    silent let s:preview_title_winid = nvim_open_win(s:preview_title_bufnr, v:false, preview_config)
+    let preview_title = ' '.fnamemodify(clap#rooter#working_dir(), ":~:.").' '
+    let width = preview_config.width
+    let title_len = strlen(preview_title)
+    if width > title_len
+      let padding_size = (width - title_len) / 2
+    else
+      " TODO: pathshorten
+    endif
+    call setbufline(s:preview_title_bufnr, 1, repeat(' ', padding_size).preview_title)
+    call nvim_buf_add_highlight(s:preview_title_bufnr, s:preview_title_ns_id, 'DiffChange', 0, padding_size, -1)
+    call setwinvar(s:preview_title_winid, '&winhl', s:preview_winhl)
+  else
+  endif
 
   call setwinvar(s:preview_winid, '&spell', 0)
   call setwinvar(s:preview_winid, '&winhl', s:preview_winhl)
@@ -524,6 +551,7 @@ function! clap#floating_win#close() abort
   call s:win_close(g:clap.input.winid)
   call s:win_close(g:clap.spinner.winid)
   call s:win_close(s:indicator_winid)
+  call s:win_close(s:preview_title_winid)
 
   " I don't know why, but this could be related to the cursor move in grep.vim
   " thus I have to go back to the start window in grep.vim
