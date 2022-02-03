@@ -329,7 +329,10 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let (lines, fname) = previewer::preview_file(path, 2 * self.size, self.max_width())?;
+        let (mut lines, fname) = previewer::preview_file(path, 2 * self.size, self.max_width())?;
+        if let Ok(p) = Path::new(&lines[0]).strip_prefix(&self.context.cwd) {
+            lines[0] = p.display().to_string();
+        }
         self.send_response(json!({ "event": "on_move", "lines": lines, "fname": fname }));
         Ok(())
     }

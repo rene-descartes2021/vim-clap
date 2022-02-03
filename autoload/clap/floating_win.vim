@@ -387,7 +387,7 @@ function! s:create_preview_win(height) abort
       " TODO: pathshorten
     endif
     call setbufline(s:preview_title_bufnr, 1, repeat(' ', padding_size).preview_title)
-    call nvim_buf_add_highlight(s:preview_title_bufnr, s:preview_title_ns_id, 'DiffChange', 0, padding_size, -1)
+    call nvim_buf_add_highlight(s:preview_title_bufnr, s:preview_title_ns_id, 'PmenuSel', 0, padding_size, -1)
     call setwinvar(s:preview_title_winid, '&winhl', s:preview_winhl)
   else
   endif
